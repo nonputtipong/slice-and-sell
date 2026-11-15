@@ -206,10 +206,18 @@ public static class StallBuilder
         orders.counterSpot = Marker(stall, "Counter spot", CounterSpot);
         orders.customerExit = Marker(stall, "Customer exit", CustomerExit);
         orders.queueSpot = Marker(stall, "Queue spot", QueueSpot);
-        Box("Order card", stall, new Vector3(0, 1.3f, 1.12f), new Vector3(0.36f, 0.2f, 0.01f), Mat("Card", new Color(0.98f, 0.96f, 0.9f)), false);
-        orders.orderCard = Text("Order card text", stall, new Vector3(0, 1.3f, 1.112f), new Vector2(0.32f, 0.17f), new Color(0.15f, 0.1f, 0.05f));
+        // Order card: a paper ticket on a dark-wood backing with an orange header strip, at the customer's chest
+        // (1.24 m): seated, the eyes drop twice as far as the stall, and a higher card covered their chin.
+        var card = Box("Order card", stall, new Vector3(0, 1.24f, 1.12f), new Vector3(0.36f, 0.2f, 0.01f), Mat("Card", new Color(0.99f, 0.95f, 0.86f)), false);
+        Box("Order card backing", card.transform.parent, new Vector3(0, 1.24f, 1.126f), new Vector3(0.38f, 0.22f, 0.006f), Mat("Wood trim", new Color(0.22f, 0.13f, 0.08f)), false);
+        Box("Order card strip", card.transform.parent, new Vector3(0, 1.329f, 1.1145f), new Vector3(0.36f, 0.022f, 0.001f), Mat("Accent", new Color(0.95f, 0.55f, 0.16f)), false);
+        orders.orderCard = Text("Order card text", stall, new Vector3(0, 1.228f, 1.112f), new Vector2(0.32f, 0.15f), new Color(0.17f, 0.1f, 0.05f));
+        orders.orderCard.fontStyle = FontStyles.Bold;
+        // Chalkboard in a wooden frame with a chalk ledge; warm chalk-white text (OrderManager sizes the lines).
         Box("Chalkboard", stall, new Vector3(-0.55f, 1.45f, 0.97f), new Vector3(0.5f, 0.3f, 0.02f), Mat("Chalk", new Color(0.12f, 0.22f, 0.16f)), false);
-        orders.chalkboard = Text("Chalkboard text", stall, new Vector3(-0.55f, 1.45f, 0.955f), new Vector2(0.44f, 0.25f), Color.white);
+        Box("Chalkboard frame", stall, new Vector3(-0.55f, 1.45f, 0.978f), new Vector3(0.54f, 0.34f, 0.02f), Mat("Wood trim", new Color(0.22f, 0.13f, 0.08f)), false);
+        Box("Chalk ledge", stall, new Vector3(-0.55f, 1.285f, 0.955f), new Vector3(0.5f, 0.012f, 0.03f), Mat("Wood trim", new Color(0.22f, 0.13f, 0.08f)), false);
+        orders.chalkboard = Text("Chalkboard text", stall, new Vector3(-0.55f, 1.45f, 0.955f), new Vector2(0.44f, 0.25f), new Color(0.97f, 0.95f, 0.88f));
         // Money bowl (the cash box's look; coins clink there) on the free deck behind the board, inside the cart's lip.
         var cash = Box("Cash box", stall, new Vector3(-0.03f, 0.94f, 0.728f), new Vector3(0.14f, 0.08f, 0.1f), Mat("Cash box", new Color(0.2f, 0.35f, 0.6f)));
         var bowl = StreetBuilder.Prop("MoneyBowl", stall, new Vector3(-0.03f, CounterTop, 0.728f), 0f);

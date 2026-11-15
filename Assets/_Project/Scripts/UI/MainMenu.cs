@@ -8,7 +8,7 @@ namespace SliceAndSell
     // Lives on an always-active object; `sign` is the canvas, hidden (not moved) during a shift. Built by MenuBuilder.
     public class MainMenu : MonoBehaviour
     {
-        public static readonly Color StarOn = new Color(1f, 0.78f, 0.15f), StarOff = new Color(0.16f, 0.1f, 0.05f, 0.35f);
+        public static readonly Color StarOn = new Color(1f, 0.78f, 0.15f), StarOff = new Color(0.62f, 0.5f, 0.38f, 0.7f);   // empty star: visible on the cream buttons and the wood board
 
         public OrderManager orders;
         public GameObject sign, mainPage, levelsPage, howToPage, settingsPage;

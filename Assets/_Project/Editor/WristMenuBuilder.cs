@@ -25,10 +25,9 @@ public static class WristMenuBuilder
 
         // Fruit crate, 200 x 264 mm: dark frame, wood board, slats between the rows.
         // Two columns of 80 mm buttons at x = ±48 (16 mm gap); rows every 56 mm (40 mm button + 16 mm gap).
-        var panel = UiKit.Panel("Crate panel", menu.transform, Vector3.zero, Quaternion.identity, new Vector2(200, 264), DarkWood);
-        Rect(panel, Vector2.zero, new Vector2(188, 252), UiKit.Wood);
-        foreach (float y in new[] { 40f, -16f, -72f }) Rect(panel, new Vector2(0, y), new Vector2(188, 3), DarkWood);
-        UiKit.Label(panel, "Menu", new Vector2(0, 108), new Vector2(176, 24), UiKit.TitleSize, UiKit.Cream);
+        var panel = UiKit.Panel("Crate panel", menu.transform, Vector3.zero, Quaternion.identity, new Vector2(200, 264), UiKit.Wood);
+        foreach (float y in new[] { 40f, -16f, -72f }) Rect(panel, new Vector2(0, y), new Vector2(176, 3), DarkWood);
+        UiKit.Label(panel, "Menu", new Vector2(0, 108), new Vector2(176, 24), UiKit.TitleSize, UiKit.Cream, style: FontStyles.Bold);
 
         var button = new Vector2(80, 40);
         menu.pauseLabel = Text(UiKit.Button(panel, "Pause", new Vector2(-48, 68), button, menu.TogglePause));
@@ -47,9 +46,10 @@ public static class WristMenuBuilder
         var loss = new GameObject("Hand Loss Pause").AddComponent<HandLossPause>();
         loss.transform.SetParent(parentForMenu, false);
         loss.head = menu.head;
-        var card = UiKit.Panel("Show your hands card", loss.transform, Vector3.zero, Quaternion.identity, new Vector2(360, 130), UiKit.Cream);
-        UiKit.Label(card, "Show your hands", new Vector2(0, 28), new Vector2(340, 40), UiKit.TitleSize * 1.5f, UiKit.Ink);
-        UiKit.Label(card, "Paused. The game resumes when a hand or controller is back in view.", new Vector2(0, -24), new Vector2(340, 56), UiKit.TitleSize, UiKit.Ink);
+        var card = UiKit.Panel("Show your hands card", loss.transform, Vector3.zero, Quaternion.identity, new Vector2(400, 150), UiKit.Cream);
+        UiKit.Label(card, "Show your hands", new Vector2(0, 34), new Vector2(370, 44), UiKit.TitleSize * 1.5f, UiKit.Ink, style: FontStyles.Bold);
+        UiKit.Rule(card, new Vector2(0, 8), 70);
+        UiKit.Label(card, "Paused. The game resumes when a hand or controller is back in view.", new Vector2(0, -30), new Vector2(370, 56), UiKit.TitleSize, UiKit.Ink);
         card.gameObject.SetActive(false);
         loss.card = card.gameObject;
 

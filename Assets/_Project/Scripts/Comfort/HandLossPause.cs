@@ -29,7 +29,13 @@ namespace SliceAndSell
 
         void Show()
         {
-            card.transform.SetPositionAndRotation(head.position + head.forward * distance, Quaternion.LookRotation(head.forward));
+            // Level, along where the head points, just under eye height: looking down at the cart would otherwise
+            // put the card inside the counter, hidden.
+            var ahead = Vector3.ProjectOnPlane(head.forward, Vector3.up);
+            if (ahead.sqrMagnitude < 1e-4f) ahead = Vector3.ProjectOnPlane(head.up, Vector3.up);
+            ahead.Normalize();
+            var pos = head.position + ahead * distance + Vector3.down * 0.08f;
+            card.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - head.position));
             card.SetActive(true);
             if (!GamePause.Paused) { GamePause.Set(true); pausedByUs = true; }
         }

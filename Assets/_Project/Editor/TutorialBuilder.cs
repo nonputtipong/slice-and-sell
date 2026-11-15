@@ -11,11 +11,12 @@ public static class TutorialBuilder
 {
     const string MatDir = "Assets/_Project/Materials/Greybox";
 
-    // From the eye (0, 1.6, 0) the card sits 27 degrees down, 0.55 m away: between the order card (10-20 degrees down)
-    // and the arrows over the counter items (33 degrees and lower), so it is read without turning the head and never
-    // covers the board or the order card. Inside poke reach for the OK button. Parented to the stall, so it moves when seated.
-    static readonly Vector3 CardPos = new Vector3(0f, 1.35f, 0.49f);
-    static readonly Quaternion CardRot = Quaternion.Euler(27f, 0f, 0f);
+    // Low over the middle of the counter, tilted to the eyes, inside poke reach for the OK button. Parented to the stall,
+    // so it drops with it when seated, while the eyes drop twice as far (1.6 -> 1.2 m): it must clear the customer's face
+    // and the order card in both stances. Standing it sits ~42 degrees down (order card 14-22), seated ~21 (order card
+    // 4-12, face above the eye line), and it stays above the sight line to the board.
+    static readonly Vector3 CardPos = new Vector3(0f, 1.20f, 0.42f);
+    static readonly Quaternion CardRot = Quaternion.Euler(35f, 0f, 0f);
     static readonly Vector2 CardSize = new Vector2(280f, 120f);     // mm
 
     public static Tutorial Build(Transform stall, OrderManager orders, CuttingBoard board, Knife knife, Dispenser guavaBin,
@@ -29,7 +30,7 @@ public static class TutorialBuilder
         // One label over the whole card (top-aligned for the intro, so the OK button fits below it).
         var card = UiKit.Panel("Tutorial card", t.transform, CardPos, CardRot, CardSize, UiKit.Wood);
         t.text = UiKit.Label(card, "", Vector2.zero, CardSize - new Vector2(20f, 12f), UiKit.BodySize, UiKit.Cream);
-        t.okButton = UiKit.Button(card, "OK", new Vector2(0f, -32f), new Vector2(90f, 44f), t.Ok).gameObject;
+        t.okButton = UiKit.Button(card, "OK", new Vector2(0f, -32f), new Vector2(90f, 44f), t.Ok, primary: true).gameObject;
         UiKit.CheckSizes(card);
         t.card = card.gameObject;
 

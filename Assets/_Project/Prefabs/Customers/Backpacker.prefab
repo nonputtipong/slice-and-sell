@@ -155,8 +155,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 669799b76b19845b087919683a26d66a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SliceAndSell::SliceAndSell.PatienceRing
-  outerRadius: 0.07
-  innerRadius: 0.05
+  outerRadius: 0.08
+  innerRadius: 0.057
 --- !u!1001 &6161828485685046824
 PrefabInstance:
   m_ObjectHideFlags: 0

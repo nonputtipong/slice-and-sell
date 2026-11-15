@@ -249,9 +249,10 @@ namespace SliceAndSell
         {
             if (!chalkboard) return;
             var level = Level;
-            if (!level) { chalkboard.text = $"฿{Money}\nServed {Served}/{orders.Count}"; return; }
+            // Same lines as ever; the money line leads (bigger, bold), combo in the menus' gold.
+            if (!level) { chalkboard.text = $"<size=125%><b>฿{Money}</b></size>\nServed {Served}/{orders.Count}"; return; }
             string time = level.shiftSeconds > 0f ? $"\n{(int)TimeLeft / 60}:{(int)TimeLeft % 60:00}" : $"\nServed {Served}/{orders.Count}";
-            chalkboard.text = $"฿{Money} / ฿{level.target}\nCombo x{Combo}{time}";
+            chalkboard.text = $"<size=125%><b>฿{Money}</b> / ฿{level.target}</size>\n<color=#FFC73D>Combo x{Combo}</color>{time}";
         }
     }
 }

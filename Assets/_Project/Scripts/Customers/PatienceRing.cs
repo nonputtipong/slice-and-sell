@@ -10,13 +10,16 @@ namespace SliceAndSell
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
     public class PatienceRing : MonoBehaviour
     {
-        public float outerRadius = 0.07f, innerRadius = 0.05f;   // 14 cm across: legible at ~1.4 m
+        public float outerRadius = 0.08f, innerRadius = 0.057f;  // 16 cm across: legible at ~1.4 m
+        const float TrackMargin = 0.006f;                         // the dark track shows 6 mm round the coloured arc
         const int Segments = 48;
 
         static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
-        static readonly Color Green = new Color(0.3f, 0.85f, 0.3f), Yellow = new Color(1f, 0.8f, 0.15f), Red = new Color(0.9f, 0.2f, 0.15f);
+        static readonly Color Green = new Color(0.3f, 0.85f, 0.3f), Yellow = new Color(1f, 0.8f, 0.15f), Red = new Color(0.9f, 0.2f, 0.15f),
+            TrackColour = new Color(0.13f, 0.09f, 0.07f);
 
-        Mesh mesh;
+        Mesh mesh, trackMesh;
+        MeshRenderer track;
         int[] tris;
         MeshRenderer rend;
         MaterialPropertyBlock block;
@@ -34,12 +37,15 @@ namespace SliceAndSell
             // Segment k runs counter-clockwise (as the player sees it) from 12 o'clock, so showing the
             // first n segments leaves the gap growing clockwise from 12. Front faces look down local -Z.
             var verts = new Vector3[(Segments + 1) * 2];
+            var trackVerts = new Vector3[verts.Length];
             for (int k = 0; k <= Segments; k++)
             {
                 float a = 2 * Mathf.PI * k / Segments;
                 var dir = new Vector3(-Mathf.Sin(a), Mathf.Cos(a), 0);
                 verts[2 * k] = dir * outerRadius;
                 verts[2 * k + 1] = dir * innerRadius;
+                trackVerts[2 * k] = dir * (outerRadius + TrackMargin) + Vector3.forward * 0.002f;   // just behind the arc
+                trackVerts[2 * k + 1] = dir * (innerRadius - TrackMargin) + Vector3.forward * 0.002f;
             }
             tris = new int[Segments * 6];
             for (int k = 0; k < Segments; k++)
@@ -52,15 +58,28 @@ namespace SliceAndSell
             mesh.triangles = tris;
             mesh.RecalculateBounds();   // full ring; kept as the bounds when fewer segments show
             GetComponent<MeshFilter>().sharedMesh = mesh;
+
+            // The full dark track the arc drains over, so how much is left reads at a glance against any background.
+            trackMesh = new Mesh { name = "Patience track", vertices = trackVerts, triangles = tris };
+            trackMesh.RecalculateBounds();
+            var t = new GameObject("Track", typeof(MeshFilter), typeof(MeshRenderer));
+            t.transform.SetParent(transform, false);
+            t.GetComponent<MeshFilter>().sharedMesh = trackMesh;
+            track = t.GetComponent<MeshRenderer>();
+            track.sharedMaterial = rend.sharedMaterial;
+            track.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            var tb = new MaterialPropertyBlock(); tb.SetColor(BaseColor, TrackColour); track.SetPropertyBlock(tb);
+            track.enabled = false;
         }
 
-        void OnDestroy() { if (mesh) Destroy(mesh); }
+        void OnDestroy() { if (mesh) Destroy(mesh); if (trackMesh) Destroy(trackMesh); }
 
         public void Set(float t01, bool visible)
         {
             t01 = Mathf.Clamp01(t01);
             int n = Mathf.CeilToInt(t01 * Segments);
             rend.enabled = visible && n > 0;
+            track.enabled = visible;
             if (n > 0 && n != shownSegments) mesh.SetTriangles(tris, 0, n * 6, 0, false);
             shownSegments = n;
 
