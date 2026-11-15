@@ -6,6 +6,8 @@ using UnityEngine.TestTools;
 
 namespace SliceAndSell.Tests
 {
+    // M1 greybox mode (no levels): fixed order list, one customer object. Cut bonuses go to Money as the
+    // fruit is cut, so these tests measure what the delivery itself pays.
     public class OrderTests
     {
         OrderManager orders;
@@ -28,24 +30,35 @@ namespace SliceAndSell.Tests
         }
 
         // Bag and fruit are children of the OrderManager object, so TearDown removes them too.
-        Bag BagWith(int cuts)
+        internal static Bag BagWith(Transform parent, int cuts, bool skewer = false, bool chili = false)
         {
             var bag = new GameObject("Bag").AddComponent<Bag>();
-            bag.transform.SetParent(orders.transform);
+            bag.transform.SetParent(parent);
+            if (skewer) bag.AddExtra(ExtraKind.Skewer);
+            if (chili) bag.AddExtra(ExtraKind.Chili);
             if (cuts < 0) return bag;
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Prefabs/Guava.prefab");
-            var fruit = Object.Instantiate(prefab, orders.transform).GetComponent<Fruit>();
+            var fruit = Object.Instantiate(prefab, parent).GetComponent<Fruit>();
             fruit.GetComponent<Rigidbody>().isKinematic = true;
             for (int i = 0; i < cuts; i++) fruit.ApplyCut(false);
             bag.Fill(fruit);
             return bag;
         }
 
+        Bag BagWith(int cuts) => BagWith(orders.transform, cuts);
+
+        int Paid(Bag bag, out DeliveryResult result)
+        {
+            int before = orders.Money;
+            result = orders.Deliver(bag);
+            return orders.Money - before;
+        }
+
         [UnityTest]
         public IEnumerator CorrectOrderPays()
         {
-            Assert.AreEqual(DeliveryResult.Correct, orders.Deliver(BagWith(2)));
-            Assert.AreEqual(20, orders.Money);
+            Assert.AreEqual(20, Paid(BagWith(2), out var r));
+            Assert.AreEqual(DeliveryResult.Correct, r);
             Assert.IsNull(orders.Current);
             yield break;
         }
@@ -53,16 +66,16 @@ namespace SliceAndSell.Tests
         [UnityTest]
         public IEnumerator WrongCutCountPaysBaseOnly()
         {
-            Assert.AreEqual(DeliveryResult.Wrong, orders.Deliver(BagWith(1)));
-            Assert.AreEqual(20, orders.Money);
+            Assert.AreEqual(20, Paid(BagWith(1), out var r));
+            Assert.AreEqual(DeliveryResult.Wrong, r);
             yield break;
         }
 
         [UnityTest]
         public IEnumerator EmptyBagIsRefusedAndCustomerWaits()
         {
-            Assert.AreEqual(DeliveryResult.Empty, orders.Deliver(BagWith(-1)));
-            Assert.AreEqual(0, orders.Money);
+            Assert.AreEqual(0, Paid(BagWith(-1), out var r));
+            Assert.AreEqual(DeliveryResult.Empty, r);
             Assert.IsNotNull(orders.Current);
             yield break;
         }
@@ -77,6 +90,16 @@ namespace SliceAndSell.Tests
             Assert.IsFalse(orders.ShiftOver);
             orders.Deliver(BagWith(2));
             Assert.IsTrue(orders.ShiftOver);
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator CleanCutsWhilePreparingEarnBonusAndCombo()
+        {
+            int before = orders.Money;
+            BagWith(2);                     // two clean cuts
+            Assert.AreEqual(before + 4, orders.Money);
+            Assert.AreEqual(2, orders.Combo);
             yield break;
         }
     }
