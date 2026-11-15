@@ -13,9 +13,16 @@ its extras and hand it over before their patience runs out. Controllers and hand
 | Asset | Where | Source and licence |
 | --- | --- | --- |
 | Guava, mango, pineapple, watermelon models and cut stages | `Assets/_Project/Models/Fruits/` | Original, made for this project with `Tools/Blender/make_fruits.py` |
-| Food Kit models (cutting board, paper bag) | `Assets/_Project/ThirdParty/Kenney/FoodKit/` | Food Kit by Kenney (www.kenney.nl), CC0 1.0 |
+| Food Kit models (cutting board, paper bag, foam food boxes) | `Assets/_Project/ThirdParty/Kenney/FoodKit/` | Food Kit by Kenney (www.kenney.nl), CC0 1.0 |
 | City Kit (Commercial) models (shophouses, awning) | `Assets/_Project/ThirdParty/Kenney/CityKitCommercial/` | City Kit (Commercial) by Kenney (www.kenney.nl), CC0 1.0 |
 | City Kit (Roads) models (road, pavement, street lights) | `Assets/_Project/ThirdParty/Kenney/CityKitRoads/` | City Kit (Roads) by Kenney (www.kenney.nl), CC0 1.0 |
+| Furniture Kit models (potted plants, radio, trash can, cardboard boxes) | `Assets/_Project/ThirdParty/Kenney/FurnitureKit/` | Furniture Kit by Kenney (www.kenney.nl), CC0 1.0 |
+| Low poly scooter | `Assets/_Project/ThirdParty/PolyPizza/lowpoly-scooter.glb` | "low poly scooter" by Thomas Saint Pierre (s1pierro), Poly Pizza (https://poly.pizza/m/awXCP7LUcz6), Creative Commons Attribution (CC BY). Unmodified mesh, rescaled. |
+| Vespa | `Assets/_Project/ThirdParty/PolyPizza/vespa.glb` | "Vespa" by Jasmine Roberts, Poly Pizza (https://poly.pizza/m/blGLclvvdEM), Creative Commons Attribution (CC BY). Unmodified mesh, rescaled. |
+| Cat | `Assets/_Project/ThirdParty/PolyPizza/cat.glb` | "Cat" by Poly by Google, Poly Pizza (https://poly.pizza/m/5d32eb38-9546-4ce4-aa77-bcef9328ee61 listing), Creative Commons Attribution (CC BY). Unmodified mesh, rescaled. |
+| Houseplant | `Assets/_Project/ThirdParty/PolyPizza/houseplant.glb` | "Houseplant" by Quaternius, Poly Pizza, CC0 1.0 |
+| Shiba Inu (soi dog) | `Assets/_Project/ThirdParty/PolyPizza/shiba-inu.glb` | "Shiba Inu" by Quaternius, Poly Pizza, CC0 1.0 |
+| Street props (pushcart, rainbow umbrella, bulb strings, paper lanterns, scale, ice tray, plastic bags, stools, AC units, electricity poles and cables, shop signs, roller shutters, spirit house, baskets, cooler, money bowl, bunting, price sign) | `Assets/_Project/Models/Street/` | Original, made for this project with `Tools/Blender/make_street_props.py` |
 | Holiday Kit models (string lights, lanterns) | `Assets/_Project/ThirdParty/Kenney/HolidayKit/` | Holiday Kit by Kenney (www.kenney.nl), CC0 1.0 |
 | Stall, knife, cleaver, extras, crates (primitive shapes) | `Assets/_Project/Prefabs/`, `Assets/_Project/Materials/` | Original |
 | Impact Sounds | `Assets/_Project/ThirdParty/Kenney/ImpactSounds/` | Kenney (www.kenney.nl), CC0 1.0 |
@@ -35,4 +42,4 @@ its extras and hand it over before their patience runs out. Controllers and hand
 | XR Interaction Toolkit samples (Starter Assets, Hands Interaction Demo, XR Interaction Simulator), XR Hands HandVisualizer | `Assets/Samples/` | Unity Technologies, Unity Companion License |
 | TextMesh Pro resources (LiberationSans font) | `Assets/TextMesh Pro/` | Unity Technologies; LiberationSans under the SIL Open Font License 1.1 |
 
-Polyfork, Kenney, the Freesound and OpenGameArt authors and the course are credited here as the licences ask; none of them made or endorse this game.
+Polyfork, Kenney, the Poly Pizza authors, the Freesound and OpenGameArt authors and the course are credited here as the licences ask; none of them made or endorse this game.

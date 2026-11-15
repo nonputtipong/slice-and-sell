@@ -1,0 +1,743 @@
+{
+  "units": "metres, Unity space (+Y up, front +Z)",
+  "props": [
+    {
+      "name": "PushCart",
+      "file": "PushCart.glb",
+      "origin": "floor under the counter centre; counter top (inside the 2 cm lip) at y = 0.90; player side is -Z (open shelf, push handle 4.5 cm proud at y = 0.83), customers +Z",
+      "budget": 3000,
+      "tris": 964,
+      "min": [
+        -0.765,
+        0.0,
+        -0.345
+      ],
+      "max": [
+        0.765,
+        2.05,
+        0.3
+      ],
+      "size": [
+        1.53,
+        2.05,
+        0.645
+      ],
+      "materials": [
+        "WoodLight",
+        "WoodDark",
+        "CartPaint",
+        "MetalSteel",
+        "BlackRubber",
+        "MetalDark"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "RainbowUmbrella",
+      "file": "RainbowUmbrella.glb",
+      "origin": "pole base",
+      "budget": 3000,
+      "tris": 592,
+      "min": [
+        -1.15,
+        0.0,
+        -1.15
+      ],
+      "max": [
+        1.15,
+        2.69,
+        1.15
+      ],
+      "size": [
+        2.3,
+        2.69,
+        2.3
+      ],
+      "materials": [
+        "FabricRed",
+        "FabricOrange",
+        "FabricYellow",
+        "FabricGreen",
+        "FabricBlue",
+        "FabricPurple",
+        "MetalSteel",
+        "MetalDark"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "BulbStringWarm",
+      "file": "BulbStringWarm.glb",
+      "origin": "left hang point; wire runs along +X to x = 1.0, hang points at y = 0, sag 6 cm",
+      "budget": 1500,
+      "tris": 628,
+      "min": [
+        -0.0003,
+        -0.1123,
+        -0.015
+      ],
+      "max": [
+        1.0003,
+        0.0014,
+        0.015
+      ],
+      "size": [
+        1.0006,
+        0.1137,
+        0.03
+      ],
+      "materials": [
+        "BlackRubber",
+        "BulbWarmGlow"
+      ],
+      "emissive": [
+        "BulbWarmGlow"
+      ]
+    },
+    {
+      "name": "BulbStringColour",
+      "file": "BulbStringColour.glb",
+      "origin": "left hang point; wire runs along +X to x = 1.0, hang points at y = 0, sag 6 cm",
+      "budget": 1500,
+      "tris": 628,
+      "min": [
+        -0.0003,
+        -0.1123,
+        -0.015
+      ],
+      "max": [
+        1.0003,
+        0.0014,
+        0.015
+      ],
+      "size": [
+        1.0006,
+        0.1137,
+        0.03
+      ],
+      "materials": [
+        "BlackRubber",
+        "BulbRedGlow",
+        "BulbYellowGlow",
+        "BulbGreenGlow",
+        "BulbBlueGlow",
+        "BulbPinkGlow"
+      ],
+      "emissive": [
+        "BulbRedGlow",
+        "BulbYellowGlow",
+        "BulbGreenGlow",
+        "BulbBlueGlow",
+        "BulbPinkGlow"
+      ]
+    },
+    {
+      "name": "LanternRed",
+      "file": "LanternRed.glb",
+      "origin": "top hang point; lantern hangs below y = 0",
+      "budget": 600,
+      "tris": 420,
+      "min": [
+        -0.11,
+        -0.32,
+        -0.11
+      ],
+      "max": [
+        0.11,
+        0.0,
+        0.11
+      ],
+      "size": [
+        0.22,
+        0.32,
+        0.22
+      ],
+      "materials": [
+        "BlackRubber",
+        "LanternCap",
+        "LanternRedGlow",
+        "Gold"
+      ],
+      "emissive": [
+        "LanternRedGlow"
+      ]
+    },
+    {
+      "name": "LanternOrange",
+      "file": "LanternOrange.glb",
+      "origin": "top hang point; lantern hangs below y = 0",
+      "budget": 600,
+      "tris": 420,
+      "min": [
+        -0.11,
+        -0.32,
+        -0.11
+      ],
+      "max": [
+        0.11,
+        0.0,
+        0.11
+      ],
+      "size": [
+        0.22,
+        0.32,
+        0.22
+      ],
+      "materials": [
+        "BlackRubber",
+        "LanternCap",
+        "LanternOrangeGlow",
+        "Gold"
+      ],
+      "emissive": [
+        "LanternOrangeGlow"
+      ]
+    },
+    {
+      "name": "LanternGreen",
+      "file": "LanternGreen.glb",
+      "origin": "top hang point; lantern hangs below y = 0",
+      "budget": 600,
+      "tris": 420,
+      "min": [
+        -0.11,
+        -0.32,
+        -0.11
+      ],
+      "max": [
+        0.11,
+        0.0,
+        0.11
+      ],
+      "size": [
+        0.22,
+        0.32,
+        0.22
+      ],
+      "materials": [
+        "BlackRubber",
+        "LanternCap",
+        "LanternGreenGlow",
+        "Gold"
+      ],
+      "emissive": [
+        "LanternGreenGlow"
+      ]
+    },
+    {
+      "name": "LanternTeal",
+      "file": "LanternTeal.glb",
+      "origin": "top hang point; lantern hangs below y = 0",
+      "budget": 600,
+      "tris": 420,
+      "min": [
+        -0.11,
+        -0.32,
+        -0.11
+      ],
+      "max": [
+        0.11,
+        0.0,
+        0.11
+      ],
+      "size": [
+        0.22,
+        0.32,
+        0.22
+      ],
+      "materials": [
+        "BlackRubber",
+        "LanternCap",
+        "LanternTealGlow",
+        "Gold"
+      ],
+      "emissive": [
+        "LanternTealGlow"
+      ]
+    },
+    {
+      "name": "LanternPurple",
+      "file": "LanternPurple.glb",
+      "origin": "top hang point; lantern hangs below y = 0",
+      "budget": 600,
+      "tris": 420,
+      "min": [
+        -0.11,
+        -0.32,
+        -0.11
+      ],
+      "max": [
+        0.11,
+        0.0,
+        0.11
+      ],
+      "size": [
+        0.22,
+        0.32,
+        0.22
+      ],
+      "materials": [
+        "BlackRubber",
+        "LanternCap",
+        "LanternPurpleGlow",
+        "Gold"
+      ],
+      "emissive": [
+        "LanternPurpleGlow"
+      ]
+    },
+    {
+      "name": "Scale",
+      "file": "Scale.glb",
+      "origin": "centre of the base at y = 0; dial faces +Z",
+      "budget": 1500,
+      "tris": 560,
+      "min": [
+        -0.12,
+        0.0,
+        -0.12
+      ],
+      "max": [
+        0.12,
+        0.235,
+        0.12
+      ],
+      "size": [
+        0.24,
+        0.235,
+        0.24
+      ],
+      "materials": [
+        "ScaleBody",
+        "PaintWhite",
+        "MetalSteel",
+        "BlackRubber",
+        "NeedleRed"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "IceTray",
+      "file": "IceTray.glb",
+      "origin": "centre of the base at y = 0",
+      "budget": 600,
+      "tris": 432,
+      "min": [
+        -0.186,
+        0.0,
+        -0.136
+      ],
+      "max": [
+        0.186,
+        0.1312,
+        0.136
+      ],
+      "size": [
+        0.372,
+        0.1312,
+        0.272
+      ],
+      "materials": [
+        "TubPlastic",
+        "Ice"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "PlasticBag",
+      "file": "PlasticBag.glb",
+      "origin": "handle top (hook point); bag hangs below y = 0",
+      "budget": 600,
+      "tris": 280,
+      "min": [
+        -0.1176,
+        -0.2839,
+        -0.0509
+      ],
+      "max": [
+        0.1137,
+        -0.0013,
+        0.0474
+      ],
+      "size": [
+        0.2313,
+        0.2826,
+        0.0983
+      ],
+      "materials": [
+        "PlasticBagWhite"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "PlasticBagFlat",
+      "file": "PlasticBagFlat.glb",
+      "origin": "centre of the base at y = 0",
+      "budget": 600,
+      "tris": 92,
+      "min": [
+        -0.1,
+        0.0,
+        -0.07
+      ],
+      "max": [
+        0.1378,
+        0.0144,
+        0.07
+      ],
+      "size": [
+        0.2378,
+        0.0144,
+        0.14
+      ],
+      "materials": [
+        "PlasticBagWhite"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "PlasticStool",
+      "file": "PlasticStool.glb",
+      "origin": "centre of the base at y = 0",
+      "budget": 600,
+      "tris": 400,
+      "min": [
+        -0.1569,
+        0.0001,
+        -0.1569
+      ],
+      "max": [
+        0.1569,
+        0.45,
+        0.1569
+      ],
+      "size": [
+        0.3139,
+        0.4499,
+        0.3139
+      ],
+      "materials": [
+        "StoolPlastic"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "AirCon",
+      "file": "AirCon.glb",
+      "origin": "back face centre, bottom of the unit at y = 0 (bracket hangs to y = -0.30); back on the wall at z = 0, front faces +Z; fan on the viewer's left (+X), pipes on the right (-X)",
+      "budget": 1500,
+      "tris": 624,
+      "min": [
+        -0.4821,
+        -0.3,
+        -0.0
+      ],
+      "max": [
+        0.4,
+        0.55,
+        0.31
+      ],
+      "size": [
+        0.8821,
+        0.85,
+        0.31
+      ],
+      "materials": [
+        "AirConBody",
+        "AirConGrille",
+        "MetalDark",
+        "Copper",
+        "PipeInsulation"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "ElectricPole",
+      "file": "ElectricPole.glb",
+      "origin": "pole base; transformer and meter boxes face +Z",
+      "budget": 3000,
+      "tris": 1252,
+      "min": [
+        -0.85,
+        0.0,
+        -0.12
+      ],
+      "max": [
+        0.85,
+        7.5,
+        0.54
+      ],
+      "size": [
+        1.7,
+        7.5,
+        0.66
+      ],
+      "materials": [
+        "Concrete",
+        "MetalDark",
+        "Insulator",
+        "TransformerGrey",
+        "MeterBox",
+        "MeterGlass",
+        "BlackRubber"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "WireBundle",
+      "file": "WireBundle.glb",
+      "origin": "x = 0 hang point; 5 cables to x = 10, y = 0 at both ends, sags 0.84-0.98 m",
+      "budget": 1500,
+      "tris": 820,
+      "min": [
+        -0.0019,
+        -0.9964,
+        -0.0793
+      ],
+      "max": [
+        10.0019,
+        0.0051,
+        0.0802
+      ],
+      "size": [
+        10.0038,
+        1.0015,
+        0.1595
+      ],
+      "materials": [
+        "BlackRubber"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "SignBoard",
+      "file": "SignBoard.glb",
+      "origin": "back-centre-bottom; front faces +Z (text goes on the panel face at z = 0.025)",
+      "budget": 600,
+      "tris": 60,
+      "min": [
+        -0.6,
+        0.0,
+        -0.0
+      ],
+      "max": [
+        0.6,
+        0.4,
+        0.04
+      ],
+      "size": [
+        1.2,
+        0.4,
+        0.04
+      ],
+      "materials": [
+        "SignPanel",
+        "SignFrame"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "RollerShutter",
+      "file": "RollerShutter.glb",
+      "origin": "back-centre-bottom; front faces +Z",
+      "budget": 1500,
+      "tris": 436,
+      "min": [
+        -1.2,
+        0.0,
+        -0.0
+      ],
+      "max": [
+        1.2,
+        2.4,
+        0.3
+      ],
+      "size": [
+        2.4,
+        2.4,
+        0.3
+      ],
+      "materials": [
+        "ShutterMetal",
+        "MetalDark",
+        "ShutterBox"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "SpiritHouse",
+      "file": "SpiritHouse.glb",
+      "origin": "centre of the base at y = 0; door faces +Z",
+      "budget": 1500,
+      "tris": 432,
+      "min": [
+        -0.3,
+        0.0,
+        -0.25
+      ],
+      "max": [
+        0.3,
+        1.66,
+        0.25
+      ],
+      "size": [
+        0.6,
+        1.66,
+        0.5
+      ],
+      "materials": [
+        "SpiritWhite",
+        "Gold",
+        "SpiritRed"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "BasketStack",
+      "file": "BasketStack.glb",
+      "origin": "centre of the base at y = 0 (bottom crate centre)",
+      "budget": 1500,
+      "tris": 816,
+      "min": [
+        -0.2787,
+        0.0,
+        -0.2091
+      ],
+      "max": [
+        0.2851,
+        0.6,
+        0.2184
+      ],
+      "size": [
+        0.5638,
+        0.6,
+        0.4276
+      ],
+      "materials": [
+        "CrateYellow",
+        "CrateGreen",
+        "CrateRed",
+        "CrateBlue"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "CoolerBox",
+      "file": "CoolerBox.glb",
+      "origin": "centre of the base at y = 0; latch faces +Z",
+      "budget": 600,
+      "tris": 300,
+      "min": [
+        -0.3445,
+        0.0,
+        -0.218
+      ],
+      "max": [
+        0.3445,
+        0.4,
+        0.218
+      ],
+      "size": [
+        0.6891,
+        0.4,
+        0.436
+      ],
+      "materials": [
+        "CoolerMetal",
+        "MetalDark",
+        "Rust"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "MoneyBowl",
+      "file": "MoneyBowl.glb",
+      "origin": "centre of the base at y = 0",
+      "budget": 600,
+      "tris": 420,
+      "min": [
+        -0.12,
+        0.0,
+        -0.12
+      ],
+      "max": [
+        0.12,
+        0.08,
+        0.12
+      ],
+      "size": [
+        0.24,
+        0.08,
+        0.24
+      ],
+      "materials": [
+        "BowlPurple",
+        "NotePink",
+        "NoteGreen",
+        "NoteBlue",
+        "CoinSilver",
+        "Gold"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "Bunting",
+      "file": "Bunting.glb",
+      "origin": "left hang point; string runs along +X to x = 3.0, sag 15 cm",
+      "budget": 1500,
+      "tris": 276,
+      "min": [
+        -0.0004,
+        -0.3985,
+        -0.0021
+      ],
+      "max": [
+        3.0004,
+        0.0021,
+        0.0021
+      ],
+      "size": [
+        3.0008,
+        0.4006,
+        0.0042
+      ],
+      "materials": [
+        "BlackRubber",
+        "FabricRed",
+        "FabricYellow",
+        "FabricBlue",
+        "FabricGreen",
+        "FabricOrange",
+        "FabricPurple"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "PriceSign",
+      "file": "PriceSign.glb",
+      "origin": "stick bottom; board faces +Z (text on the face at z = 0.010)",
+      "budget": 600,
+      "tris": 36,
+      "min": [
+        -0.08,
+        0.0,
+        -0.004
+      ],
+      "max": [
+        0.08,
+        0.255,
+        0.01
+      ],
+      "size": [
+        0.16,
+        0.255,
+        0.014
+      ],
+      "materials": [
+        "WoodLight",
+        "PaintWhite"
+      ],
+      "emissive": []
+    }
+  ]
+}

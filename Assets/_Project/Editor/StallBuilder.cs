@@ -34,8 +34,9 @@ public static class StallBuilder
     static readonly Vector3 KnifeHandGripEuler = Vector3.zero;
 
     // Customers walk along the street behind the counter (far edge z 0.85) and stop in front of the tray.
-    static readonly Vector3 CustomerEntry = new Vector3(-2.5f, 0, 1.35f), CounterSpot = new Vector3(0, 0, 1.35f), CustomerExit = new Vector3(2.5f, 0, 1.35f);
-    static readonly Vector3 QueueSpot = new Vector3(-0.9f, 0, 1.8f);    // Level 3: the next customer waits here, off the walking line
+    // Customers walk up the soi to the counter and back down it; the next one in Level 3 waits a step behind (StreetBuilder).
+    static readonly Vector3 CustomerEntry = StreetBuilder.CustomerEntry, CounterSpot = new Vector3(0, 0, 1.35f), CustomerExit = StreetBuilder.CustomerExit;
+    static readonly Vector3 QueueSpot = StreetBuilder.QueueSpot;
 
     // ---------- fruits.json (written by Tools/Blender/make_fruits.py) ----------
     [Serializable] class FruitsFile { public FruitSpec[] fruits; }
@@ -43,6 +44,16 @@ public static class StallBuilder
     [Serializable] class VolumeSpec { public string type; public float[] center, size; }
     [Serializable] class CutSpec { public float[] normal, point; public float depth; }
     static Vector3 V(float[] a) => new Vector3(a[0], a[1], a[2]);
+
+    // Slice & Sell > Build Stall Scene + Bake Lighting: the full build for a release (the bake takes minutes).
+    [MenuItem("Slice & Sell/Build Stall Scene + Bake Lighting")]
+    public static void BuildAndBake()
+    {
+        Build();
+        var scene = EditorSceneManager.OpenScene(ScenePath);
+        StreetBuilder.BakeLighting();
+        EditorSceneManager.SaveScene(scene);
+    }
 
     [MenuItem("Slice & Sell/Build Stall Scene")]
     public static void Build()
@@ -72,7 +83,7 @@ public static class StallBuilder
             if (Lab5Roots.Contains(go.name)) Object.DestroyImmediate(go);
         var room = scene.GetRootGameObjects().First(g => g.name == "Room").transform;
         foreach (var n in Lab5RoomParts) { var t = room.Find(n); if (t) Object.DestroyImmediate(t.gameObject); }
-        StreetBuilder.Build(room);
+        StreetBuilder.Build(room, UiKit.Font);
 
         // Stationary game (GDD > Comfort): no move, turn or teleport, so teleport/snap turn/vignette aren't needed.
         foreach (var p in Object.FindObjectsByType<UnityEngine.XR.Interaction.Toolkit.Locomotion.LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
@@ -126,7 +137,7 @@ public static class StallBuilder
         stall.gameObject.AddComponent<StanceHeight>();     // seated: the whole stall drops to arm height
 
         // Counter: top at 0.9 m, front edge 25 cm in front of the player, everything within ~65 cm reach.
-        Box("Counter", stall, new Vector3(0, 0.45f, 0.55f), new Vector3(1.4f, 0.9f, 0.6f), Mat("Counter", new Color(0.55f, 0.38f, 0.24f)));
+        var counter = Box("Counter", stall, new Vector3(0, 0.45f, 0.55f), new Vector3(1.4f, 0.9f, 0.6f), Mat("Counter", new Color(0.55f, 0.38f, 0.24f)));
 
         // Cutting board: fruit socket (fruit rests on the board top), guide line, scoop spot (bag socket) to its right.
         var boardGo = new GameObject("Cutting board"); boardGo.transform.SetParent(stall);
@@ -152,6 +163,8 @@ public static class StallBuilder
             bool big = fruits[i].GetComponent<Fruit>().needsCleaver;
             var crate = Crate(fruits[i].name + " crate", stall, crates[i], big ? 0.23f : 0.2f, big ? 0.05f : 0.08f);
             Dispenser(crate, fruits[i], crates[i] + new Vector3(0, 0.01f, 0));
+            // A ring of display fruit round the real one (looks only), so the crates read as stocked.
+            StreetBuilder.FruitHeap(crate, fruits[i], big ? 2 : fruits[i].name == "Pineapple" ? 2 : 5, big ? 0.09f : 0.07f, i + 1);
         }
 
         // Bag stack and the extras (skewer cup, chili-salt tray) on the right.
@@ -192,6 +205,8 @@ public static class StallBuilder
         Box("Chalkboard", stall, new Vector3(-0.55f, 1.45f, 0.97f), new Vector3(0.5f, 0.3f, 0.02f), Mat("Chalk", new Color(0.12f, 0.22f, 0.16f)), false);
         orders.chalkboard = Text("Chalkboard text", stall, new Vector3(-0.55f, 1.45f, 0.955f), new Vector2(0.44f, 0.25f), Color.white);
         var cash = Box("Cash box", stall, new Vector3(0.62f, 0.94f, 0.78f), new Vector3(0.14f, 0.08f, 0.1f), Mat("Cash box", new Color(0.2f, 0.35f, 0.6f)));
+        var bowl = StreetBuilder.Prop("MoneyBowl", stall, new Vector3(0.67f, CounterTop, 0.79f), 0f);
+        if (bowl) { bowl.localScale = Vector3.one * 0.8f; cash.GetComponent<Renderer>().enabled = false; }     // clear of the bell   // the money bowl is the look
         orders.cashBox = cash.transform;
 
         // Shop-sign main menu starts shifts; results board after each one.
@@ -228,7 +243,8 @@ public static class StallBuilder
         // Juice, crunch, coins (GameEvents listeners), and the market around the stall.
         EffectsSetup.Create(stall);
         StreetSounds(stall, orders.counterSpot);
-        StreetBuilder.DressStall(stall);
+        // The pushcart look replaces the counter box's own (the box keeps the collider); umbrella, bulbs, lanterns, scale...
+        if (StreetBuilder.DressStall(stall, counter.transform.position)) counter.GetComponent<Renderer>().enabled = false;
     }
 
     // ---------- audio and font ----------
@@ -249,6 +265,8 @@ public static class StallBuilder
         var radio = Box("Radio", stall, new Vector3(0.45f, 1.02f, -0.45f), new Vector3(0.2f, 0.12f, 0.08f), Mat("Radio", new Color(0.75f, 0.2f, 0.18f)));
         street.radio = Loop(radio, Clip("radio-loop.ogg", stream: true), 0.45f, spatial: true);
         street.radioSwitch = radio.AddComponent<XRSimpleInteractable>();
+        radio.GetComponent<Renderer>().enabled = false;     // Kenney radio as the look; the box keeps the poke collider
+        StreetBuilder.Fit(Root + "/ThirdParty/Kenney/FurnitureKit/radio.glb", radio.transform.parent, new Vector3(0.45f, 0.96f, -0.45f), 180f, 0.14f, isStatic: false).name = "Radio look";
         var poke = radio.AddComponent<XRPokeFilter>();
         poke.pokeInteractable = street.radioSwitch;
         poke.pokeConfiguration.Value.pokeDirection = PokeAxis.NegativeZ;     // pushed from the player's side
@@ -259,6 +277,7 @@ public static class StallBuilder
         street.motorbike.clip = Clip("motorbike-pass.mp3", stream: false);
         street.motorbike.spatialBlend = 1f; street.motorbike.minDistance = 2f; street.motorbike.maxDistance = 30f;
         street.motorbike.playOnAwake = false; street.motorbike.loop = true;
+        street.streetFrom = StreetBuilder.BikeFrom; street.streetTo = StreetBuilder.BikeTo;     // the cross street at the end of the soi
     }
 
     static AudioSource Loop(GameObject on, AudioClip clip, float volume, bool spatial)
@@ -609,6 +628,10 @@ public static class StallBuilder
         cam.fieldOfView = 80;
         ShaderUtil.allowAsyncCompilation = false;   // otherwise the first frame shows placeholder shaders
         Shot(cam, "Logs/stall-preview.png");
+        // The reference framing (look image 1): eye height behind the cart, looking down the soi.
+        cam.transform.position = new Vector3(0, 1.65f, -0.25f); cam.transform.LookAt(new Vector3(0, 1.05f, 4f)); cam.fieldOfView = 75;
+        Shot(cam, "Logs/stall-reference.png");
+        cam.transform.position = new Vector3(0, 1.6f, -0.05f); cam.transform.LookAt(new Vector3(0, 1.15f, 0.75f)); cam.fieldOfView = 80;
 
         // Second shot: the shop sign as the player first sees it (no customer, no fruit on the board).
         foreach (var c in Object.FindObjectsByType<Customer>(FindObjectsSortMode.None)) Object.DestroyImmediate(c.gameObject);
