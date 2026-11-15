@@ -25,6 +25,10 @@ public static class StallBuilder
                                            "Ray shelf", "Grab trial", "Comfort Menu", "Poke panel" };
     static readonly string[] Lab5RoomParts = { "Sofa (2.73 m)", "White knot" };
 
+    // Knife grip for tracked hands (first guess; tune on the headset, then rebuild).
+    static readonly Vector3 KnifeHandGripPosition = new Vector3(0, 0, 0.035f);
+    static readonly Vector3 KnifeHandGripEuler = Vector3.zero;
+
     static AudioClip selectSound, releaseSound;
 
     [MenuItem("Slice & Sell/Build Stall Scene")]
@@ -39,8 +43,9 @@ public static class StallBuilder
         var knifePrefab = SavePrefab(MakeKnife(), "Knife");
         var bag = SavePrefab(MakeBag(), "Bag");
 
-        AssetDatabase.DeleteAsset(ScenePath);
-        AssetDatabase.CopyAsset(Lab5Scene, ScenePath);
+        // Overwrite the file in place (not delete + copy) so Stall.unity keeps its GUID across rebuilds.
+        File.Copy(Lab5Scene, ScenePath, true);
+        AssetDatabase.ImportAsset(ScenePath, ImportAssetOptions.ForceUpdate);
         var scene = EditorSceneManager.OpenScene(ScenePath);
         foreach (var go in scene.GetRootGameObjects())
             if (Lab5Roots.Contains(go.name)) Object.DestroyImmediate(go);
@@ -50,8 +55,15 @@ public static class StallBuilder
         BuildStall(guava, knifePrefab, bag);
 
         EditorSceneManager.SaveScene(scene);
-        EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true), new EditorBuildSettingsScene(Lab5Scene, false) };
+        // Pass the GUIDs explicitly, and clear first: Unity compares by path, keeps a stale GUID and skips the write.
+        EditorBuildSettings.scenes = new EditorBuildSettingsScene[0];
+        EditorBuildSettings.scenes = new[]
+        {
+            new EditorBuildSettingsScene(new GUID(AssetDatabase.AssetPathToGUID(ScenePath)), true),
+            new EditorBuildSettingsScene(new GUID(AssetDatabase.AssetPathToGUID(Lab5Scene)), false),
+        };
         AssetDatabase.SaveAssets();
+        Debug.Log("[StallBuilder] Build scenes: " + string.Join(", ", EditorBuildSettings.scenes.Select(s => $"{s.path} {s.guid} {s.enabled}")));
         Debug.Log("[StallBuilder] Built. Roots: " + string.Join(", ", scene.GetRootGameObjects().Select(g => g.name)));
     }
 
@@ -155,7 +167,11 @@ public static class StallBuilder
         Box("Handle", root.transform, new Vector3(0, 0, 0), new Vector3(0.025f, 0.025f, 0.1f), Mat("Handle", new Color(0.35f, 0.2f, 0.1f)));
         Box("Blade", root.transform, new Vector3(0, 0, 0.11f), new Vector3(0.003f, 0.03f, 0.12f), Mat("Steel", new Color(0.8f, 0.82f, 0.85f)));
         var attach = new GameObject("Attach").transform; attach.SetParent(root.transform, false);
-        Grab(root, LayerDefault, dynamicAttach: false).attachTransform = attach;
+        var grab = Grab<KnifeGrab>(root, LayerDefault, dynamicAttach: false);
+        grab.attachTransform = attach;
+        // Hands pinch the front of the handle (by the blade), like a chef's pinch grip. Tune on the headset.
+        grab.handAttachTransform = Marker(root.transform, "Hand attach", KnifeHandGripPosition);
+        grab.handAttachTransform.localRotation = Quaternion.Euler(KnifeHandGripEuler);
         var knife = root.AddComponent<Knife>();
         knife.edgeStart = Marker(root.transform, "Edge start", new Vector3(0, -0.015f, 0.05f));
         knife.edgeEnd = Marker(root.transform, "Edge end", new Vector3(0, -0.015f, 0.17f));
@@ -186,9 +202,11 @@ public static class StallBuilder
         return prefab;
     }
 
-    static XRGrabInteractable Grab(GameObject go, int layers, bool dynamicAttach)
+    static XRGrabInteractable Grab(GameObject go, int layers, bool dynamicAttach) => Grab<XRGrabInteractable>(go, layers, dynamicAttach);
+
+    static T Grab<T>(GameObject go, int layers, bool dynamicAttach) where T : XRGrabInteractable
     {
-        var g = go.AddComponent<XRGrabInteractable>();
+        var g = go.AddComponent<T>();
         g.interactionLayers = layers;
         g.movementType = XRBaseInteractable.MovementType.Instantaneous;
         g.useDynamicAttach = dynamicAttach;
