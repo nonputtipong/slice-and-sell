@@ -150,6 +150,7 @@ public static class StallBuilder
         board.fruitSocket.attachTransform = Marker(board.fruitSocket.transform, "Attach", new Vector3(0, 0.92f - 0.98f, 0));
         board.scoopSocket = Socket("Scoop spot", boardGo.transform, new Vector3(0.2f, 0.995f, 0.52f), new Vector3(0.14f, 0.16f, 0.1f), LayerBag);
         var scoopMark = Box("Scoop mark", boardGo.transform, new Vector3(0.2f, 0.902f, 0.52f), new Vector3(0.13f, 0.004f, 0.08f), Mat("Mark", new Color(1f, 0.8f, 0.2f)), false);
+        DeckLabel("BAG HERE", boardGo.transform, new Vector3(0.2f, 0.905f, 0.52f), 0.13f);
         board.guideLine = GuideLine(boardGo.transform);
         SocketFeedback(board.fruitSocket, boardLook.GetComponentInChildren<Renderer>().gameObject);
         SocketFeedback(board.scoopSocket, scoopMark);
@@ -163,17 +164,17 @@ public static class StallBuilder
             bool big = fruits[i].GetComponent<Fruit>().needsCleaver;
             var crate = Crate(fruits[i].name + " crate", stall, crates[i], big ? 0.23f : 0.2f, big ? 0.05f : 0.08f);
             Dispenser(crate, fruits[i], crates[i] + new Vector3(0, 0.01f, 0));
-            // A ring of display fruit round the real one (looks only), so the crates read as stocked.
-            StreetBuilder.FruitHeap(crate, fruits[i], big ? 2 : fruits[i].name == "Pineapple" ? 2 : 5, big ? 0.09f : 0.07f, i + 1);
         }
 
         // Bag stack and the extras (skewer cup, chili-salt tray) on the right.
-        var bags = new GameObject("Bag stack").transform; bags.SetParent(stall); bags.position = new Vector3(0.42f, CounterTop, 0.5f);
+        var bags = Crate("Bag stack", stall, new Vector3(0.42f, CounterTop, 0.5f), 0.14f, 0.02f);     // a supply tray like the others
         Dispenser(bags, bag, bags.position + new Vector3(0, 0.08f, 0));
         var cup = Crate("Skewer cup", stall, new Vector3(0.62f, CounterTop, 0.42f), 0.07f, 0.06f);     // behind the cleaver's blade
         Dispenser(cup, skewer, cup.position + new Vector3(0, 0.11f, 0));
         var chiliTray = Crate("Chili-salt tray", stall, new Vector3(0.6f, CounterTop, 0.56f), 0.12f, 0.03f);
         Dispenser(chiliTray, chili, chiliTray.position + new Vector3(0, 0.02f, 0));
+        // On the deck just behind the tray (the skewer cup hides its front): the order card says "chili", this is it.
+        DeckLabel("CHILI", stall, new Vector3(0.6f, CounterTop + 0.012f, 0.695f), 0.09f);
 
         // Knife, lying in front of the board; it comes back if it lands on the floor.
         var knife = (GameObject)PrefabUtility.InstantiatePrefab(knifePrefab, stall);
@@ -222,13 +223,21 @@ public static class StallBuilder
         var trayMesh = Box("Tray", tray.transform, new Vector3(0.25f, 0.905f, 0.76f), new Vector3(0.2f, 0.01f, 0.16f), Mat("Tray", new Color(0.9f, 0.45f, 0.15f)));
         var traySocket = Socket("Tray socket", tray.transform, new Vector3(0.25f, 0.985f, 0.76f), new Vector3(0.2f, 0.16f, 0.16f), LayerBag);
         traySocket.gameObject.AddComponent<HandoffTray>().orders = orders;
-        SocketFeedback(traySocket, trayMesh);
+        // A real tray with a rim (Blender) as the look, so it reads as "put it down here"; the box keeps the collider.
+        var trayLook = StreetBuilder.Prop("HandoverTray", tray.transform, new Vector3(0.25f, CounterTop, 0.76f), 0f);
+        if (trayLook) trayMesh.GetComponent<Renderer>().enabled = false;
+        SocketFeedback(traySocket, trayLook ? trayLook.GetComponentInChildren<Renderer>().gameObject : trayMesh);
+        DeckLabel("HAND OVER", tray.transform, new Vector3(0.25f, CounterTop + 0.009f, 0.76f), 0.2f);
 
         // Service bell: poke from above, or ray + trigger.
         var bell = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         bell.name = "Service bell"; bell.transform.SetParent(stall);
-        bell.transform.position = new Vector3(0.5f, 0.915f, 0.74f); bell.transform.localScale = new Vector3(0.08f, 0.015f, 0.08f);
+        // Sized to the bell model (Ø 9 cm, 6 cm tall) so the finger meets the dome where it sees it.
+        bell.transform.position = new Vector3(0.5f, 0.93f, 0.74f); bell.transform.localScale = new Vector3(0.09f, 0.03f, 0.09f);
         bell.GetComponent<Renderer>().sharedMaterial = Mat("Bell", new Color(0.95f, 0.75f, 0.2f));
+        // A real counter bell as the look, under the bell so hover/press feedback tints it (scale undone: no skew, no rotation).
+        var bellLook = StreetBuilder.Prop("ServiceBell", bell.transform, new Vector3(0, -1f, 0), 0f);
+        if (bellLook) { bellLook.localScale = new Vector3(1f / 0.09f, 1f / 0.03f, 1f / 0.09f); bell.GetComponent<Renderer>().enabled = false; }
         var simple = bell.AddComponent<XRSimpleInteractable>();
         var poke = bell.AddComponent<XRPokeFilter>();
         poke.pokeInteractable = simple;
@@ -413,7 +422,8 @@ public static class StallBuilder
         var root = new GameObject("Cleaver");
         var rb = root.AddComponent<Rigidbody>(); rb.mass = 0.6f;
         Box("Handle", root.transform, Vector3.zero, new Vector3(0.03f, 0.03f, 0.24f), Mat("Handle", new Color(0.35f, 0.2f, 0.1f)));
-        Box("Blade", root.transform, new Vector3(0, -0.04f, 0.22f), new Vector3(0.004f, 0.12f, 0.18f), Mat("Steel", new Color(0.8f, 0.82f, 0.85f)));
+        Box("Blade", root.transform, new Vector3(0, -0.04f, 0.22f), new Vector3(0.004f, 0.12f, 0.18f), Mat("Cleaver steel", new Color(0.5f, 0.53f, 0.57f)));
+        Box("Edge", root.transform, new Vector3(0, -0.096f, 0.22f), new Vector3(0.005f, 0.008f, 0.18f), Mat("Steel", new Color(0.8f, 0.82f, 0.85f)), false);   // bright cutting edge
         var grab = Grab(root, LayerDefault, dynamicAttach: true);     // each hand holds the handle where it closes
         grab.selectMode = InteractableSelectMode.Multiple;           // XRI's default grab transformer aims the cleaver from the first hand to the second
         var tool = root.AddComponent<Knife>();
@@ -497,6 +507,21 @@ public static class StallBuilder
         return g;
     }
 
+    // A short word lying flat on the counter, readable from the player's side. Auto-sized to fill the width (≥ 1.5 cm tall glyphs; the counter is ~0.6 m from the eyes).
+    static void DeckLabel(string text, Transform parent, Vector3 pos, float width)
+    {
+        var go = new GameObject("Label " + text, typeof(RectTransform));
+        go.transform.SetParent(parent, false);
+        var t = go.AddComponent<TextMeshPro>();
+        t.text = text; t.font = UiKit.Font; t.fontStyle = FontStyles.Bold;
+        t.enableAutoSizing = true; t.fontSizeMin = 0.1f; t.fontSizeMax = 0.4f;
+        t.color = new Color(0.2f, 0.12f, 0.06f);
+        t.alignment = TextAlignmentOptions.Center;
+        t.textWrappingMode = TextWrappingModes.NoWrap;
+        var rt = (RectTransform)go.transform; rt.sizeDelta = new Vector2(width, 0.035f);
+        rt.position = pos; rt.rotation = Quaternion.Euler(90f, 0f, 0f);    // flat, top of the text away from the player
+    }
+
     static XRSocketInteractor Socket(string name, Transform parent, Vector3 pos, Vector3 size, int layers)
     {
         var go = new GameObject(name);
@@ -511,7 +536,7 @@ public static class StallBuilder
     static Transform Crate(string name, Transform parent, Vector3 pos, float width, float height)
     {
         var t = new GameObject(name).transform; t.SetParent(parent); t.position = pos;
-        var wood = Mat("Crate", new Color(0.45f, 0.3f, 0.18f));
+        var wood = Mat("Supply crate", new Color(0.2f, 0.52f, 0.82f));     // every "take from here" container: bright blue plastic
         float h = width / 2f + 0.01f, y = height / 2f;
         Box("Wall L", t, pos + new Vector3(-h, y, 0), new Vector3(0.02f, height, width + 0.02f), wood);
         Box("Wall R", t, pos + new Vector3(h, y, 0), new Vector3(0.02f, height, width + 0.02f), wood);

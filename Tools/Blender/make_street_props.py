@@ -56,7 +56,7 @@ PAL = {
     "CrateYellow": "#F2C230", "CrateGreen": "#3E9E4A", "CrateRed": "#D2392E", "CrateBlue": "#2E6FC0",
     "CoolerMetal": "#9DAFB3", "Rust": "#8C5634",
     "BowlPurple": "#8E52C8", "NotePink": "#E9A3BE", "NoteGreen": "#93C99C", "NoteBlue": "#8DB6E2",
-    "CoinSilver": "#C8CCD0",
+    "CoinSilver": "#C8CCD0", "TrayOrange": "#F08A2A",
 }
 
 
@@ -725,6 +725,28 @@ def price_sign():
     return p
 
 
+def service_bell():
+    """Counter bell: dark base, brass dome, steel plunger on top (Ø 9 cm, 6 cm tall). The poke target in the game."""
+    p = Part("ServiceBell")
+    p.lathe([(0, 0), (0.045, 0), (0.045, 0.01), (0.04, 0.014), (0, 0.014)], 20, "MetalDark")
+    p.lathe([(0, 0.013), (0.04, 0.013), (0.038, 0.024), (0.03, 0.04), (0.017, 0.049), (0, 0.052)], 20, "Gold")
+    p.cyl((0, 0.05, 0), (0, 0.062, 0), 0.006, 8, "MetalSteel")
+    return p
+
+
+def handover_tray():
+    """The hand-over tray in front of the customer: orange plastic, 22 x 18 cm, 2.5 cm rim, so it reads as a place
+    to put something down (the game writes HAND OVER on its floor)."""
+    p = Part("HandoverTray")
+    hx, hz, t, h = 0.11, 0.09, 0.012, 0.025
+    p.box((-hx, 0, -hz), (hx, 0.006, hz), "TrayOrange")
+    p.box((-hx, 0, -hz), (hx, h, -hz + t), "TrayOrange")
+    p.box((-hx, 0, hz - t), (hx, h, hz), "TrayOrange")
+    p.box((-hx, 0, -hz + t), (-hx + t, h, hz - t), "TrayOrange")
+    p.box((hx - t, 0, -hz + t), (hx, h, hz - t), "TrayOrange")
+    return p
+
+
 # name -> builder, tri budget, origin note, expected Unity bounds (axis: (min, max), None = unchecked)
 BASE = "centre of the base at y = 0"
 PROPS = [
@@ -760,6 +782,9 @@ PROPS = [
     ("CoolerBox", cooler_box, SMALL, BASE + "; latch faces +Z", {"y": (0, 0.40), "z": (-0.218, 0.218)}),
     ("MoneyBowl", money_bowl, SMALL, BASE, {"y": (0, 0.08), "x": (-0.12, 0.12)}),
     ("Bunting", bunting, MEDIUM, "left hang point; string runs along +X to x = 3.0, sag 15 cm", {"x": (-0.003, 3.003)}),
+    ("ServiceBell", service_bell, SMALL, BASE, {"y": (0, 0.062), "x": (-0.045, 0.045)}),
+    ("HandoverTray", handover_tray, SMALL, BASE + "; floor top at y = 0.006, rim to 0.025",
+     {"y": (0, 0.025), "x": (-0.11, 0.11), "z": (-0.09, 0.09)}),
     ("PriceSign", price_sign, SMALL, "stick bottom; board faces +Z (text on the face at z = 0.010)",
      {"y": (0, 0.255)}),
 ]

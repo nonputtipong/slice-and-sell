@@ -142,6 +142,8 @@ public static class StreetBuilder
         Prop("PlasticStool", s, new Vector3(2.4f, 0, 7.8f), 0f, Stool(new Color(0.9f, 0.85f, 0.75f)));
         Prop("BasketStack", s, new Vector3(R - 0.35f, 0, 2.6f), -90f);
         Prop("CoolerBox", s, new Vector3(-2.25f, 0, 1.5f), 80f);
+        Prop("IceTray", s, new Vector3(-2.25f, 0.4f, 1.38f), 80f);
+        Prop("Scale", s, new Vector3(-2.27f, 0.4f, 1.7f), 100f);
         Prop("SpiritHouse", s, new Vector3(L + 0.4f, 0, 8.3f), 90f);
         Prop("PlasticStool", s, new Vector3(1.9f, 0, 16.5f), 30f, Stool(new Color(0.85f, 0.2f, 0.18f)));
         Prop("PlasticStool", s, new Vector3(-2.2f, 0, 21f), 0f, Stool(new Color(0.2f, 0.4f, 0.8f)));
@@ -254,55 +256,14 @@ public static class StreetBuilder
         }
         // A warm string along the front skirt of the cart too (the customers' side).
         for (int i = 0; i < 2; i++) Prop("BulbStringColour", stall, new Vector3(-0.7f + i * 0.7f, 0.86f, 0.87f), 0f, scaleX: 0.7f);
-        // Two lanterns from the umbrella side of the frame, above the eye line (bottom at ~2 m), bags on the frame's
-        // left post, the scale in front of the board (dial to the customer), the ice tray on a stool beside the cart.
+        // Two lanterns from the frame's front corners, above the eye line (bottom at ~2 m). Nothing decorative goes on
+        // the counter or within reach: everything a new player can touch there does something. (The scale, ice tray,
+        // plastic bags, foam boxes and price sign used to be here; they looked usable but weren't.)
         Prop("LanternRed", stall, new Vector3(-0.7f, 2.32f, 0.92f), 0f);
         Prop("LanternOrange", stall, new Vector3(0.7f, 2.32f, 0.92f), 0f);
-        Prop("PlasticBag", stall, new Vector3(-0.8f, 1.22f, 0.36f), 90f);
-        Prop("PlasticBag", stall, new Vector3(-0.8f, 1.22f, 0.46f), 75f);
-        Prop("Scale", stall, new Vector3(-0.08f, 0.9f, 0.76f), 0f);
-        Prop("PlasticStool", stall, new Vector3(-1.02f, 0, 0.72f), 0f, Stool(new Color(0.2f, 0.4f, 0.8f)));
-        Prop("IceTray", stall, new Vector3(-1.02f, 0.45f, 0.72f), 90f);
-        var price = Prop("PriceSign", stall, new Vector3(-0.47f, 0.9f, 0.84f), 180f);
-        if (price)     // both faces: the customer reads one, the vendor the other
-        {
-            Label(price, "฿20", new Vector3(0, 0.205f, 0.03f), 0.08f, new Color(0.7f, 0.1f, 0.08f), 180f);
-            Label(price, "฿20", new Vector3(0, 0.205f, -0.02f), 0.08f, new Color(0.7f, 0.1f, 0.08f), 0f);
-        }
-        Fit(Third + "Kenney/FoodKit/styrofoam.glb", stall, new Vector3(0.52f, 0.3f, 0.45f), 0f, 0.08f, isStatic: false);
-        Fit(Third + "Kenney/FoodKit/styrofoam.glb", stall, new Vector3(0.52f, 0.38f, 0.45f), 8f, 0.08f, isStatic: false);
-        Fit(Third + "Kenney/FurnitureKit/cardboardBoxOpen.glb", stall, new Vector3(-0.35f, 0.3f, 0.45f), 0f, 0.28f, isStatic: false);
+        // Stock on the lower shelf, under the counter: closed boxes, clearly storage.
+        Fit(Third + "Kenney/FurnitureKit/cardboardBoxClosed.glb", stall, new Vector3(-0.35f, 0.3f, 0.5f), 0f, 0.26f, isStatic: false);
         return cart;
-    }
-
-    // Text on a prop's front face (+Z), e.g. a price sign.
-    static void Label(Transform on, string text, Vector3 localPos, float size, Color ink, float yaw)
-    {
-        var go = new GameObject("Label", typeof(RectTransform));
-        go.transform.SetParent(on, false);
-        var t = go.AddComponent<TextMeshPro>();
-        t.text = text; t.font = font; t.fontSize = size * 10f; t.color = ink; t.alignment = TextAlignmentOptions.Center;
-        t.textWrappingMode = TextWrappingModes.NoWrap;
-        var rt = (RectTransform)go.transform; rt.sizeDelta = new Vector2(0.15f, 0.08f);
-        rt.localPosition = localPos; rt.localRotation = Quaternion.Euler(0, yaw, 0);
-    }
-
-    // Decorative heaps around a crate's spawn point: the fruit model's whole stage, no colliders, no scripts.
-    public static void FruitHeap(Transform crate, GameObject fruitPrefab, int count, float spread, int seed)
-    {
-        var whole = fruitPrefab.GetComponent<SliceAndSell.Fruit>().stages[0];
-        var rng = new System.Random(seed);
-        var heap = new GameObject("Display heap").transform; heap.SetParent(crate, false);
-        heap.position = crate.position;
-        for (int i = 0; i < count; i++)
-        {
-            float a = (i + (float)rng.NextDouble() * 0.5f) * Mathf.PI * 2f / count, r = spread * (0.75f + 0.25f * (float)rng.NextDouble());   // a ring: the real fruit stays in the middle
-            var f = Object.Instantiate(whole, heap);
-            f.SetActive(true);
-            f.transform.localPosition = new Vector3(Mathf.Cos(a) * r, -0.005f, Mathf.Sin(a) * r);
-            f.transform.localRotation = Quaternion.Euler((float)rng.NextDouble() * 20f - 10f, (float)rng.NextDouble() * 360f, (float)rng.NextDouble() * 20f - 10f);
-            foreach (var c in f.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
-        }
     }
 
     // ---------- sky, fog, sun, ambient ----------

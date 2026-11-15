@@ -713,6 +713,60 @@
       "emissive": []
     },
     {
+      "name": "ServiceBell",
+      "file": "ServiceBell.glb",
+      "origin": "centre of the base at y = 0",
+      "budget": 600,
+      "tris": 312,
+      "min": [
+        -0.045,
+        0.0,
+        -0.045
+      ],
+      "max": [
+        0.045,
+        0.062,
+        0.045
+      ],
+      "size": [
+        0.09,
+        0.062,
+        0.09
+      ],
+      "materials": [
+        "MetalDark",
+        "Gold",
+        "MetalSteel"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "HandoverTray",
+      "file": "HandoverTray.glb",
+      "origin": "centre of the base at y = 0; floor top at y = 0.006, rim to 0.025",
+      "budget": 600,
+      "tris": 60,
+      "min": [
+        -0.11,
+        0.0,
+        -0.09
+      ],
+      "max": [
+        0.11,
+        0.025,
+        0.09
+      ],
+      "size": [
+        0.22,
+        0.025,
+        0.18
+      ],
+      "materials": [
+        "TrayOrange"
+      ],
+      "emissive": []
+    },
+    {
       "name": "PriceSign",
       "file": "PriceSign.glb",
       "origin": "stick bottom; board faces +Z (text on the face at z = 0.010)",
