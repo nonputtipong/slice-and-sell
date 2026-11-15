@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/_Project/Scenes/Stall.unity
+    guid: 1b1586a6b03404e73b05eec6e7512834
+  - enabled: 0
     path: Assets/HCD545/Lab5/Scenes/Lab5Interaction.unity
     guid: f4b10f2ec55256244a5f8ed48ed0d103
   m_configObjects:
