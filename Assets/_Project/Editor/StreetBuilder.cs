@@ -252,16 +252,16 @@ public static class StreetBuilder
         for (int i = 0; i < 2; i++)
         {
             Prop("BulbStringWarm", stall, new Vector3(-0.7f + i * 0.7f, 2.03f, 0.84f), 0f, scaleX: 0.7f);
-            Prop("BulbStringColour", stall, new Vector3(-0.72f, 2.03f, 0.26f + i * 0.29f), -90f, scaleX: 0.29f);
-            Prop("BulbStringColour", stall, new Vector3(0.72f, 2.03f, 0.26f + i * 0.29f), -90f, scaleX: 0.29f);
+            Prop("BulbStringColour", stall, new Vector3(-0.6875f, 2.03f, 0.26f + i * 0.29f), -90f, scaleX: 0.29f);   // on the side rails
+            Prop("BulbStringColour", stall, new Vector3(0.6875f, 2.03f, 0.26f + i * 0.29f), -90f, scaleX: 0.29f);
         }
         // A warm string along the front skirt of the cart too (the customers' side).
-        for (int i = 0; i < 2; i++) Prop("BulbStringColour", stall, new Vector3(-0.7f + i * 0.7f, 0.86f, 0.87f), 0f, scaleX: 0.7f);
-        // Two lanterns from the frame's front corners, above the eye line (bottom at ~2 m). Nothing decorative goes on
+        for (int i = 0; i < 2; i++) Prop("BulbStringColour", stall, new Vector3(-0.7f + i * 0.7f, 0.86f, 0.86f), 0f, scaleX: 0.7f);   // against the skirt's top batten
+        // Two lanterns hung from the frame's front top rail (underside y 2.025, z 0.8375), near the corners, bottom at ~1.7 m. Nothing decorative goes on
         // the counter or within reach: everything a new player can touch there does something. (The scale, ice tray,
         // plastic bags, foam boxes and price sign used to be here; they looked usable but weren't.)
-        Prop("LanternRed", stall, new Vector3(-0.7f, 2.32f, 0.92f), 0f);
-        Prop("LanternOrange", stall, new Vector3(0.7f, 2.32f, 0.92f), 0f);
+        Prop("LanternRed", stall, new Vector3(-0.57f, 2.025f, 0.8375f), 0f);
+        Prop("LanternOrange", stall, new Vector3(0.57f, 2.025f, 0.8375f), 0f);
         // Stock on the lower shelf, under the counter: closed boxes, clearly storage.
         Fit(Third + "Kenney/FurnitureKit/cardboardBoxClosed.glb", stall, new Vector3(-0.35f, 0.3f, 0.5f), 0f, 0.26f, isStatic: false);
         // Work light: two warm points under the bulb rail, Baked only (no runtime cost on Quest). The cart is dynamic,

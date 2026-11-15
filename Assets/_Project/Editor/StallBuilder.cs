@@ -156,34 +156,39 @@ public static class StallBuilder
         SocketFeedback(board.scoopSocket, scoopMark);
 
         // Endless fruit crates on the left: guava nearest the board, mango behind it, pineapple to the far left,
-        // watermelon (Level 3 only) in the far-left back corner, in a wider crate.
-        var crates = new[] { new Vector3(-0.36f, CounterTop, 0.42f), new Vector3(-0.36f, CounterTop, 0.66f), new Vector3(-0.58f, CounterTop, 0.42f),
-                             new Vector3(-0.6f, CounterTop, 0.67f) };
+        // watermelon (Level 3 only) in the far-left back corner, in a wider crate. All inside the cart's lip (deck top
+        // x -0.67..0.67, z 0.28..0.82): guava and mango crates a little narrower so the column fits between the melon
+        // crate (sharing its wall) and the board's left edge (x -0.21).
+        var crates = new[] { new Vector3(-0.315f, CounterTop, 0.42f), new Vector3(-0.315f, CounterTop, 0.66f), new Vector3(-0.55f, CounterTop, 0.42f),
+                             new Vector3(-0.535f, CounterTop, 0.67f) };
+        var widths = new[] { 0.17f, 0.17f, 0.2f, 0.23f };
         for (int i = 0; i < fruits.Length && i < crates.Length; i++)
         {
             bool big = fruits[i].GetComponent<Fruit>().needsCleaver;
-            var crate = Crate(fruits[i].name + " crate", stall, crates[i], big ? 0.23f : 0.2f, big ? 0.05f : 0.08f);
+            var crate = Crate(fruits[i].name + " crate", stall, crates[i], widths[i], big ? 0.05f : 0.08f);
             Dispenser(crate, fruits[i], crates[i] + new Vector3(0, 0.01f, 0));
         }
 
         // Bag stack and the extras (skewer cup, chili-salt tray) on the right.
         var bags = Crate("Bag stack", stall, new Vector3(0.42f, CounterTop, 0.5f), 0.14f, 0.02f);     // a supply tray like the others
         Dispenser(bags, bag, bags.position + new Vector3(0, 0.08f, 0));
-        var cup = Crate("Skewer cup", stall, new Vector3(0.62f, CounterTop, 0.42f), 0.07f, 0.06f);     // behind the cleaver's blade
+        var cup = Crate("Skewer cup", stall, new Vector3(0.615f, CounterTop, 0.42f), 0.07f, 0.06f);     // behind the cleaver's blade
         Dispenser(cup, skewer, cup.position + new Vector3(0, 0.11f, 0));
-        var chiliTray = Crate("Chili-salt tray", stall, new Vector3(0.6f, CounterTop, 0.56f), 0.12f, 0.03f);
+        var chiliTray = Crate("Chili-salt tray", stall, new Vector3(0.59f, CounterTop, 0.56f), 0.12f, 0.03f);
         Dispenser(chiliTray, chili, chiliTray.position + new Vector3(0, 0.02f, 0));
         // On the deck just behind the tray (the skewer cup hides its front): the order card says "chili", this is it.
-        DeckLabel("CHILI", stall, new Vector3(0.6f, CounterTop + 0.012f, 0.695f), 0.09f);
+        DeckLabel("CHILI", stall, new Vector3(0.59f, CounterTop + 0.012f, 0.695f), 0.09f);
 
         // Knife, lying in front of the board; it comes back if it lands on the floor.
         var knife = (GameObject)PrefabUtility.InstantiatePrefab(knifePrefab, stall);
         knife.transform.SetPositionAndRotation(new Vector3(-0.05f, 0.92f, 0.34f), Quaternion.Euler(0, 90, 90));
         knife.GetComponent<Knife>().board = board;
 
-        // Cleaver lying flat at the front right, handle toward the board, blade edge away from the player.
+        // Cleaver lying at the front right, handle toward the board, blade edge away from the player, resting on the
+        // handle's edge and the blade's far edge (tilted 8.7 deg about its length; its weight is in the blade).
         var cleaver = (GameObject)PrefabUtility.InstantiatePrefab(cleaverPrefab, stall);
-        cleaver.transform.SetPositionAndRotation(new Vector3(0.24f, CounterTop + 0.015f, 0.3f), Quaternion.LookRotation(Vector3.right, Vector3.back));
+        cleaver.transform.SetPositionAndRotation(new Vector3(0.24f, CounterTop + 0.0171f, 0.3f),
+                                                 Quaternion.AngleAxis(8.7f, Vector3.right) * Quaternion.LookRotation(Vector3.right, Vector3.back));
         cleaver.GetComponent<Knife>().board = board;
         var whoosh = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/ThirdParty/Kenney/InterfaceSounds/maximize_001.ogg");
         foreach (var tool in new[] { knife, cleaver })
@@ -205,9 +210,10 @@ public static class StallBuilder
         orders.orderCard = Text("Order card text", stall, new Vector3(0, 1.3f, 1.112f), new Vector2(0.32f, 0.17f), new Color(0.15f, 0.1f, 0.05f));
         Box("Chalkboard", stall, new Vector3(-0.55f, 1.45f, 0.97f), new Vector3(0.5f, 0.3f, 0.02f), Mat("Chalk", new Color(0.12f, 0.22f, 0.16f)), false);
         orders.chalkboard = Text("Chalkboard text", stall, new Vector3(-0.55f, 1.45f, 0.955f), new Vector2(0.44f, 0.25f), Color.white);
-        var cash = Box("Cash box", stall, new Vector3(0.62f, 0.94f, 0.78f), new Vector3(0.14f, 0.08f, 0.1f), Mat("Cash box", new Color(0.2f, 0.35f, 0.6f)));
-        var bowl = StreetBuilder.Prop("MoneyBowl", stall, new Vector3(0.67f, CounterTop, 0.79f), 0f);
-        if (bowl) { bowl.localScale = Vector3.one * 0.8f; cash.GetComponent<Renderer>().enabled = false; }     // clear of the bell   // the money bowl is the look
+        // Money bowl (the cash box's look; coins clink there) on the free deck behind the board, inside the cart's lip.
+        var cash = Box("Cash box", stall, new Vector3(-0.03f, 0.94f, 0.728f), new Vector3(0.14f, 0.08f, 0.1f), Mat("Cash box", new Color(0.2f, 0.35f, 0.6f)));
+        var bowl = StreetBuilder.Prop("MoneyBowl", stall, new Vector3(-0.03f, CounterTop, 0.728f), 0f);
+        if (bowl) { bowl.localScale = Vector3.one * 0.75f; cash.GetComponent<Renderer>().enabled = false; }
         orders.cashBox = cash.transform;
 
         // Shop-sign main menu starts shifts; results board after each one.
@@ -218,16 +224,16 @@ public static class StallBuilder
         var wristMenu = WristMenuBuilder.Build(null, orders);
         UnityEditor.Events.UnityEventTools.AddPersistentListener(wristMenu.onExitToMenu, mainMenu.Show);
 
-        // Hand-off tray (far edge, in front of the customer).
+        // Hand-off tray (far edge, in front of the customer, its back rim just inside the cart's lip at z 0.82).
         var tray = new GameObject("Hand-off tray"); tray.transform.SetParent(stall);
-        var trayMesh = Box("Tray", tray.transform, new Vector3(0.25f, 0.905f, 0.76f), new Vector3(0.2f, 0.01f, 0.16f), Mat("Tray", new Color(0.9f, 0.45f, 0.15f)));
-        var traySocket = Socket("Tray socket", tray.transform, new Vector3(0.25f, 0.985f, 0.76f), new Vector3(0.2f, 0.16f, 0.16f), LayerBag);
+        var trayMesh = Box("Tray", tray.transform, new Vector3(0.25f, 0.905f, 0.73f), new Vector3(0.2f, 0.01f, 0.16f), Mat("Tray", new Color(0.9f, 0.45f, 0.15f)));
+        var traySocket = Socket("Tray socket", tray.transform, new Vector3(0.25f, 0.985f, 0.73f), new Vector3(0.2f, 0.16f, 0.16f), LayerBag);
         traySocket.gameObject.AddComponent<HandoffTray>().orders = orders;
         // A real tray with a rim (Blender) as the look, so it reads as "put it down here"; the box keeps the collider.
-        var trayLook = StreetBuilder.Prop("HandoverTray", tray.transform, new Vector3(0.25f, CounterTop, 0.76f), 0f);
+        var trayLook = StreetBuilder.Prop("HandoverTray", tray.transform, new Vector3(0.25f, CounterTop, 0.73f), 0f);
         if (trayLook) trayMesh.GetComponent<Renderer>().enabled = false;
         SocketFeedback(traySocket, trayLook ? trayLook.GetComponentInChildren<Renderer>().gameObject : trayMesh);
-        DeckLabel("HAND OVER", tray.transform, new Vector3(0.25f, CounterTop + 0.009f, 0.76f), 0.2f);
+        DeckLabel("HAND OVER", tray.transform, new Vector3(0.25f, CounterTop + 0.009f, 0.73f), 0.2f);
 
         // Service bell: poke from above, or ray + trigger.
         var bell = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -425,6 +431,9 @@ public static class StallBuilder
     {
         var root = new GameObject("Cleaver");
         var rb = root.AddComponent<Rigidbody>(); rb.mass = 0.6f;
+        // Weight in the steel blade (not spread evenly over the colliders, which put it in the handle): set down, it
+        // rests on the blade's edge and the handle like a real cleaver, instead of balancing on the handle, blade raised.
+        rb.automaticCenterOfMass = false; rb.centerOfMass = new Vector3(0f, -0.03f, 0.063f);
         Box("Handle", root.transform, Vector3.zero, new Vector3(0.03f, 0.03f, 0.24f), Mat("Handle", new Color(0.35f, 0.2f, 0.1f)));
         Box("Blade", root.transform, new Vector3(0, -0.04f, 0.22f), new Vector3(0.004f, 0.12f, 0.18f), Mat("Cleaver steel", new Color(0.5f, 0.53f, 0.57f)));
         Box("Edge", root.transform, new Vector3(0, -0.096f, 0.22f), new Vector3(0.005f, 0.008f, 0.18f), Mat("Steel", new Color(0.8f, 0.82f, 0.85f)), false);   // bright cutting edge
@@ -642,14 +651,15 @@ public static class StallBuilder
         var orders = Object.FindAnyObjectByType<OrderManager>();
         orders.orderCard.text = "Mango\n3 cuts\n+ skewer, chili"; orders.chalkboard.text = "฿120 / ฿400\nCombo x4\n2:15";
         foreach (var c in Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.gameObject.SetActive(false);   // menus and tutorial card
+        var stallRoot = Object.FindAnyObjectByType<StanceHeight>().transform;     // the preview items go under it, so the seated shot moves them too
         foreach (var d in Object.FindObjectsByType<SliceAndSell.Dispenser>(FindObjectsSortMode.None))
-            Object.Instantiate(d.prefab, d.spawnPoint.position, d.spawnPoint.rotation);
+            Object.Instantiate(d.prefab, d.spawnPoint.position, d.spawnPoint.rotation, stallRoot);
         // (The patience ring builds its mesh in Awake, which doesn't run in edit mode, so it isn't shown here.)
         if (orders.customerPrefabs.Length > 0)
-            Object.Instantiate(orders.customerPrefabs[0], orders.counterSpot.position, Quaternion.Euler(0, 180, 0));
+            Object.Instantiate(orders.customerPrefabs[0], orders.counterSpot.position, Quaternion.Euler(0, 180, 0), stallRoot);
         var board = Object.FindAnyObjectByType<CuttingBoard>();
         var mango = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>($"{Root}/Prefabs/Mango.prefab"),
-                                       board.fruitSocket.attachTransform.position, Quaternion.identity).GetComponent<Fruit>();
+                                       board.fruitSocket.attachTransform.position, Quaternion.identity, stallRoot).GetComponent<Fruit>();
         mango.stages[0].SetActive(false); mango.stages[1].SetActive(true);
         var cam = new GameObject("Preview cam").AddComponent<Camera>();
         cam.transform.position = new Vector3(0, 1.6f, -0.05f);
@@ -662,6 +672,11 @@ public static class StallBuilder
         // The reference framing (look image 1): eye height behind the cart, looking down the soi.
         cam.transform.position = new Vector3(0, 1.65f, -0.25f); cam.transform.LookAt(new Vector3(0, 1.05f, 4f)); cam.fieldOfView = 75;
         Shot(cam, "Logs/stall-reference.png");
+        // Seated: the stall drops by SeatedDrop (as StanceHeight does), eyes at about 1.2 m, looking down at the cart.
+        stallRoot.position += Vector3.down * GameSettings.SeatedDrop;
+        cam.transform.position = new Vector3(0, 1.2f, -0.05f); cam.transform.LookAt(new Vector3(0, 0.8f, 0.6f)); cam.fieldOfView = 80;
+        Shot(cam, "Logs/stall-seated.png");
+        stallRoot.position += Vector3.up * GameSettings.SeatedDrop;
         cam.transform.position = new Vector3(0, 1.6f, -0.05f); cam.transform.LookAt(new Vector3(0, 1.15f, 0.75f)); cam.fieldOfView = 80;
 
         // Second shot: the shop sign as the player first sees it (no customer, no fruit on the board).
