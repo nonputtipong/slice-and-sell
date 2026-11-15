@@ -20,10 +20,15 @@ its extras and hand it over before their patience runs out. Controllers and hand
 | Backpacker | `Assets/_Project/ThirdParty/Polyfork/backpacker-f56207.glb` | Backpacker by Polyfork (https://polyfork.dev/asset/backpacker-f56207), CC BY 4.0. Unmodified mesh; used as a customer. |
 | Delivery Courier | `Assets/_Project/ThirdParty/Polyfork/delivery-courier-327e30.glb` | Delivery Courier by Polyfork (https://polyfork.dev/asset/delivery-courier-327e30), CC BY 4.0. Unmodified mesh; used as a customer. |
 | Student in a Hoodie | `Assets/_Project/ThirdParty/Polyfork/student-in-a-hoodie-7c8223.glb` | Student in a Hoodie by Polyfork (https://polyfork.dev/asset/student-in-a-hoodie-7c8223), CC BY 4.0. Unmodified mesh; used as a customer. |
+| Market ambience | `Assets/_Project/ThirdParty/Ambience/market-ambience.mp3` | "Thailand market ext covered busy" by kyles (Freesound 177695, https://freesound.org/s/177695/), CC0 1.0. Freesound's preview MP3. |
+| Motorbike pass | `Assets/_Project/ThirdParty/Ambience/motorbike-pass.mp3` | "Small Motorbike Passing By" by IENBA (Freesound 828204, https://freesound.org/s/828204/), CC0 1.0. Freesound's preview MP3. |
+| Radio music | `Assets/_Project/ThirdParty/Ambience/radio-loop.ogg` | "Kingdom of a Million Elephants" by Spring Spring (OpenGameArt), CC0 1.0 |
+| Customer voices | `Assets/_Project/ThirdParty/Voices/` | "Dialog vocal samples" by MirceaKitsune (OpenGameArt), CC0 1.0 |
+| Noto Sans Thai font | `Assets/_Project/ThirdParty/Fonts/NotoSansThai-Regular.ttf` | Google Noto Fonts, SIL Open Font License 1.1 |
 | Lab 4/5 starter (room, scripts, Lab 5 prefabs and sounds) | `Assets/HCD545/` | HCD-545 course starter project (CMKL University) |
 | Sofa model | `Assets/HCD545/Models/sofa.glb` | "Sheen Wood Leather Sofa", (c) 2024 Darmstadt Graphics Group GmbH, CC BY 4.0. Eric Chadwick for improvements. Original asset (c) 2021 Fran Calvente, CC0 (Polyhaven, sofa_03). Khronos glTF Sample Assets; textures resized by the course. |
 | Car model | `Assets/HCD545/Models/car.glb` | "Car Concept", (c) 2024 Darmstadt Graphics Group GmbH, CC BY 4.0. Eric Chadwick for model and textures. From a public domain model by Unity Fan (Sketchfab, CC0). Khronos glTF Sample Assets. |
 | XR Interaction Toolkit samples (Starter Assets, Hands Interaction Demo, XR Interaction Simulator), XR Hands HandVisualizer | `Assets/Samples/` | Unity Technologies, Unity Companion License |
 | TextMesh Pro resources (LiberationSans font) | `Assets/TextMesh Pro/` | Unity Technologies; LiberationSans under the SIL Open Font License 1.1 |
 
-Polyfork, Kenney and the course are credited here as the licences ask; none of them made or endorse this game.
+Polyfork, Kenney, the Freesound and OpenGameArt authors and the course are credited here as the licences ask; none of them made or endorse this game.

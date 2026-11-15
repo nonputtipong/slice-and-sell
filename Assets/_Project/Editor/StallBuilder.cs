@@ -50,6 +50,7 @@ public static class StallBuilder
         Directory.CreateDirectory(Root + "/Materials/Fruits");
         Directory.CreateDirectory(Root + "/Levels");
 
+        UiKit.Font = ThaiFont();
         var specs = JsonUtility.FromJson<FruitsFile>(File.ReadAllText(FruitsJson)).fruits;
         var fruitPrefabs = specs.Select(s => SavePrefab(MakeFruit(s), s.name)).ToArray();
         var knifePrefab = SavePrefab(MakeKnife(), "Knife");
@@ -68,6 +69,12 @@ public static class StallBuilder
             if (Lab5Roots.Contains(go.name)) Object.DestroyImmediate(go);
         var room = scene.GetRootGameObjects().First(g => g.name == "Room").transform;
         foreach (var n in Lab5RoomParts) { var t = room.Find(n); if (t) Object.DestroyImmediate(t.gameObject); }
+
+        // Stationary game (GDD > Comfort): no move, turn or teleport, so teleport/snap turn/vignette aren't needed.
+        foreach (var p in Object.FindObjectsByType<UnityEngine.XR.Interaction.Toolkit.Locomotion.LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            p.enabled = false;
+        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(t => t.name.Contains("Teleport Interactor")))
+            t.gameObject.SetActive(false);
 
         BuildStall(fruitPrefabs, knifePrefab, bag, skewer, chili, customers, menu, levels);
 
@@ -109,6 +116,7 @@ public static class StallBuilder
                            Customer[] customers, FruitMenuItem[] menu, LevelDefinition[] levels)
     {
         var stall = new GameObject("Stall").transform;
+        stall.gameObject.AddComponent<StanceHeight>();     // seated: the whole stall drops to arm height
 
         // Counter: top at 0.9 m, front edge 25 cm in front of the player, everything within ~65 cm reach.
         Box("Counter", stall, new Vector3(0, 0.45f, 0.55f), new Vector3(1.4f, 0.9f, 0.6f), Mat("Counter", new Color(0.55f, 0.38f, 0.24f)));
@@ -155,6 +163,16 @@ public static class StallBuilder
         orders.orderCard = Text("Order card text", stall, new Vector3(0, 1.3f, 1.112f), new Vector2(0.32f, 0.17f), new Color(0.15f, 0.1f, 0.05f));
         Box("Chalkboard", stall, new Vector3(-0.55f, 1.45f, 0.97f), new Vector3(0.5f, 0.3f, 0.02f), Mat("Chalk", new Color(0.12f, 0.22f, 0.16f)), false);
         orders.chalkboard = Text("Chalkboard text", stall, new Vector3(-0.55f, 1.45f, 0.955f), new Vector2(0.44f, 0.25f), Color.white);
+        var cash = Box("Cash box", stall, new Vector3(0.62f, 0.94f, 0.78f), new Vector3(0.14f, 0.08f, 0.1f), Mat("Cash box", new Color(0.2f, 0.35f, 0.6f)));
+        orders.cashBox = cash.transform;
+
+        // Shop-sign main menu starts shifts; results board after each one.
+        orders.autoStart = false;
+        var (mainMenu, _) = MenuBuilder.Build(stall, orders);
+
+        // Wrist menu (left palm up, or the Menu button) at the scene root: it follows the wrist, not the stall.
+        var wristMenu = WristMenuBuilder.Build(null, orders);
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(wristMenu.onExitToMenu, mainMenu.Show);
 
         // Hand-off tray (far edge, in front of the customer).
         var tray = new GameObject("Hand-off tray"); tray.transform.SetParent(stall);
@@ -174,8 +192,85 @@ public static class StallBuilder
         Feedback(bell, "bell");
         bell.AddComponent<ServiceBell>().orders = orders;
 
-        // Juice, crunch, coins (GameEvents listeners).
+        // Level 1 tutorial: intro card, then glow + arrow + text for customer 1, text for customer 2.
+        TutorialBuilder.Build(stall, orders, board, knife.GetComponent<Knife>(), stall.Find("Guava crate").GetComponent<SliceAndSell.Dispenser>(),
+                              bags.GetComponent<SliceAndSell.Dispenser>(), tray.GetComponentInChildren<XRSocketInteractor>());
+
+        // Juice, crunch, coins (GameEvents listeners), and the market around the stall.
         EffectsSetup.Create(stall);
+        StreetSounds(stall, orders.counterSpot);
+    }
+
+    // ---------- audio and font ----------
+
+    const string Ambience = Root + "/ThirdParty/Ambience/";
+
+    static void StreetSounds(Transform stall, Transform counterSpot)
+    {
+        var street = new GameObject("Street audio").AddComponent<StreetAudio>();
+        street.transform.SetParent(stall, false);
+        street.customerSpot = counterSpot;
+        street.voices = Directory.GetFiles(Root + "/ThirdParty/Voices", "*.ogg").Select(AssetDatabase.LoadAssetAtPath<AudioClip>).Where(c => c).ToArray();
+
+        street.ambience = Loop(street.gameObject, Clip("market-ambience.mp3", stream: true), 0.35f, spatial: false);
+
+        // Radio on a little shelf behind the player: turn round and poke it (or ray it) to switch it off.
+        var shelf = Box("Radio shelf", stall, new Vector3(0.45f, 0.95f, -0.45f), new Vector3(0.3f, 0.02f, 0.18f), Mat("Crate", new Color(0.45f, 0.3f, 0.18f)));
+        var radio = Box("Radio", stall, new Vector3(0.45f, 1.02f, -0.45f), new Vector3(0.2f, 0.12f, 0.08f), Mat("Radio", new Color(0.75f, 0.2f, 0.18f)));
+        street.radio = Loop(radio, Clip("radio-loop.ogg", stream: true), 0.45f, spatial: true);
+        street.radioSwitch = radio.AddComponent<XRSimpleInteractable>();
+        var poke = radio.AddComponent<XRPokeFilter>();
+        poke.pokeInteractable = street.radioSwitch;
+        poke.pokeConfiguration.Value.pokeDirection = PokeAxis.NegativeZ;     // pushed from the player's side
+        Feedback(radio, "bell");
+
+        var bike = new GameObject("Motorbike"); bike.transform.SetParent(street.transform, false);
+        street.motorbike = bike.AddComponent<AudioSource>();
+        street.motorbike.clip = Clip("motorbike-pass.mp3", stream: false);
+        street.motorbike.spatialBlend = 1f; street.motorbike.minDistance = 2f; street.motorbike.maxDistance = 30f;
+        street.motorbike.playOnAwake = false; street.motorbike.loop = true;
+    }
+
+    static AudioSource Loop(GameObject on, AudioClip clip, float volume, bool spatial)
+    {
+        var a = on.AddComponent<AudioSource>();
+        a.clip = clip; a.loop = true; a.playOnAwake = true; a.volume = volume;
+        a.spatialBlend = spatial ? 1f : 0f; a.minDistance = 0.4f; a.maxDistance = 8f;
+        return a;
+    }
+
+    // Long loops are kept compressed (Vorbis in memory) on Quest instead of decompressed (~30 MB for the 1:25 bed).
+    static AudioClip Clip(string file, bool stream)
+    {
+        string path = Ambience + file;
+        var imp = (AudioImporter)AssetImporter.GetAtPath(path);
+        var s = imp.defaultSampleSettings;
+        var want = stream ? AudioClipLoadType.CompressedInMemory : AudioClipLoadType.DecompressOnLoad;
+        if (s.loadType != want || s.compressionFormat != AudioCompressionFormat.Vorbis)
+        {
+            s.loadType = want; s.compressionFormat = AudioCompressionFormat.Vorbis; s.quality = 0.6f;
+            imp.defaultSampleSettings = s;
+            imp.SaveAndReimport();
+        }
+        return AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+    }
+
+    // Noto Sans Thai as a TMP font asset (dynamic atlas): Thai text and the baht sign.
+    static TMP_FontAsset ThaiFont()
+    {
+        const string path = Root + "/ThirdParty/Fonts/NotoSansThai SDF.asset";
+        var fa = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(path);
+        if (fa) return fa;
+        var font = AssetDatabase.LoadAssetAtPath<Font>(Root + "/ThirdParty/Fonts/NotoSansThai-Regular.ttf");
+        fa = TMP_FontAsset.CreateFontAsset(font, 90, 9, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA, 1024, 1024, AtlasPopulationMode.Dynamic);
+        fa.name = "NotoSansThai SDF";
+        AssetDatabase.CreateAsset(fa, path);
+        fa.atlasTextures[0].name = "NotoSansThai Atlas";
+        AssetDatabase.AddObjectToAsset(fa.atlasTextures[0], fa);
+        fa.material.name = "NotoSansThai Material";
+        AssetDatabase.AddObjectToAsset(fa.material, fa);
+        AssetDatabase.SaveAssets();
+        return fa;
     }
 
     // ---------- prefabs ----------
@@ -213,6 +308,7 @@ public static class StallBuilder
         if (fruit.stages.Length != fruit.guides.Length + 1) throw new Exception($"{s.name}: {fruit.stages.Length} stages but {fruit.guides.Length} cuts");
 
         root.AddComponent<DespawnWhenDropped>();
+        root.AddComponent<HoldOnTrackingLoss>();
         Feedback(root, "fruit");
         return root;
     }
@@ -254,6 +350,7 @@ public static class StallBuilder
         knife.edgeStart = Marker(root.transform, "Edge start", new Vector3(0, -0.015f, 0.05f));
         knife.edgeEnd = Marker(root.transform, "Edge end", new Vector3(0, -0.015f, 0.17f));
         root.AddComponent<RespawnOnDrop>();     // Lab 5: back where it started if it lands on the floor
+        root.AddComponent<HoldOnTrackingLoss>();
         Feedback(root, "knife");
         return root;
     }
@@ -275,6 +372,7 @@ public static class StallBuilder
         var mc = mouth.AddComponent<BoxCollider>(); mc.isTrigger = true; mc.size = new Vector3(0.14f, 0.06f, 0.09f);
         mouth.AddComponent<BagMouth>().bag = b;
         root.AddComponent<DespawnWhenDropped>();
+        root.AddComponent<HoldOnTrackingLoss>();
         Feedback(root, "bag");
         return root;
     }
@@ -288,6 +386,7 @@ public static class StallBuilder
         Box("Stick", root.transform, Vector3.zero, new Vector3(0.004f, 0.2f, 0.004f), Mat("Skewer", new Color(0.85f, 0.7f, 0.45f)), false);
         Grab(root, LayerDefault, dynamicAttach: true);
         root.AddComponent<Extra>().kind = ExtraKind.Skewer;
+        root.AddComponent<HoldOnTrackingLoss>();
         root.AddComponent<DespawnWhenDropped>();
         Feedback(root, "extra");
         return root;
@@ -300,6 +399,7 @@ public static class StallBuilder
         Box("Packet", root.transform, Vector3.zero, new Vector3(0.06f, 0.012f, 0.08f), Mat("Chili", new Color(0.85f, 0.15f, 0.1f)));
         Grab(root, LayerDefault, dynamicAttach: true);
         root.AddComponent<Extra>().kind = ExtraKind.Chili;
+        root.AddComponent<HoldOnTrackingLoss>();
         root.AddComponent<DespawnWhenDropped>();
         Feedback(root, "extra");
         return root;
@@ -402,6 +502,7 @@ public static class StallBuilder
     {
         var go = new GameObject(name); go.transform.SetParent(parent); go.transform.position = pos;
         var t = go.AddComponent<TextMeshPro>();
+        if (UiKit.Font) t.font = UiKit.Font;
         t.alignment = TextAlignmentOptions.Center;
         t.color = colour;
         t.rectTransform.sizeDelta = size;
@@ -430,7 +531,8 @@ public static class StallBuilder
         // Show what Play mode shows: sample text, one item at each dispenser, a customer at the counter,
         // and a fruit on the board half cut with its guide. The scene is not saved.
         var orders = Object.FindAnyObjectByType<OrderManager>();
-        orders.orderCard.text = "Mango\n3 cuts\n+ skewer, chili"; orders.chalkboard.text = "THB 120 / 400\nCombo x4\n2:15";
+        orders.orderCard.text = "Mango\n3 cuts\n+ skewer, chili"; orders.chalkboard.text = "฿120 / ฿400\nCombo x4\n2:15";
+        foreach (var c in Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.gameObject.SetActive(false);   // menus and tutorial card
         foreach (var d in Object.FindObjectsByType<SliceAndSell.Dispenser>(FindObjectsSortMode.None))
             Object.Instantiate(d.prefab, d.spawnPoint.position, d.spawnPoint.rotation);
         // (The patience ring builds its mesh in Awake, which doesn't run in edit mode, so it isn't shown here.)
@@ -444,16 +546,31 @@ public static class StallBuilder
         cam.transform.position = new Vector3(0, 1.6f, -0.05f);
         cam.transform.LookAt(new Vector3(0, 1.15f, 0.75f));
         cam.fieldOfView = 80;
+        ShaderUtil.allowAsyncCompilation = false;   // otherwise the first frame shows placeholder shaders
+        Shot(cam, "Logs/stall-preview.png");
+
+        // Second shot: the shop sign as the player first sees it (no customer, no fruit on the board).
+        foreach (var c in Object.FindObjectsByType<Customer>(FindObjectsSortMode.None)) Object.DestroyImmediate(c.gameObject);
+        Object.DestroyImmediate(mango.gameObject);
+        var sign = Object.FindAnyObjectByType<MainMenu>(FindObjectsInactive.Include);
+        foreach (var c in sign.GetComponentsInChildren<Canvas>(true)) c.gameObject.SetActive(true);
+        sign.Show();
+        Shot(cam, "Logs/stall-menu.png");
+        Object.DestroyImmediate(cam.gameObject);
+        Debug.Log("[StallBuilder] Previews written to Logs/stall-preview.png and Logs/stall-menu.png");
+    }
+
+    static void Shot(Camera cam, string file)
+    {
         var rt = new RenderTexture(1600, 1000, 24);
         cam.targetTexture = rt;
-        ShaderUtil.allowAsyncCompilation = false;   // otherwise the first frame shows placeholder shaders
+        Canvas.ForceUpdateCanvases();
         cam.Render(); cam.Render();
         RenderTexture.active = rt;
         var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
         tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0); tex.Apply();
-        File.WriteAllBytes("Logs/stall-preview.png", tex.EncodeToPNG());
+        File.WriteAllBytes(file, tex.EncodeToPNG());
         RenderTexture.active = null;
-        Object.DestroyImmediate(cam.gameObject);
-        Debug.Log("[StallBuilder] Preview written to Logs/stall-preview.png");
+        cam.targetTexture = null;
     }
 }

@@ -104,6 +104,7 @@ GameObject:
   - component: {fileID: 1849234449538375145}
   - component: {fileID: 8896476013826628155}
   - component: {fileID: 6239390079849363691}
+  - component: {fileID: 830669124617991238}
   - component: {fileID: 6625412965823604351}
   m_Layer: 0
   m_Name: Bag
@@ -339,6 +340,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: SliceAndSell::SliceAndSell.DespawnWhenDropped
   belowHeight: 0.5
   seconds: 2
+--- !u!114 &830669124617991238
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1766992976713814740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 241b28366e5de4cb7a750c318bcd1ef1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SliceAndSell::SliceAndSell.HoldOnTrackingLoss
+  holdSeconds: 2
 --- !u!114 &6625412965823604351
 MonoBehaviour:
   m_ObjectHideFlags: 0

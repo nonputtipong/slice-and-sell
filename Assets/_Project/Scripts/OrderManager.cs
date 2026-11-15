@@ -26,9 +26,11 @@ namespace SliceAndSell
         [Header("Levels (empty = M1 greybox mode)")]
         public LevelDefinition[] levels;
         public int levelIndex;
+        public bool autoStart = true;       // false when a main menu starts the shift
         public FruitMenuItem[] menu;
         public Customer[] customerPrefabs;
         public Transform customerEntry, counterSpot, customerExit;
+        public Transform cashBox;           // coins clink here (GDD > Spatial audio); the bag's position if unset
 
         [Header("M1 greybox mode")]
         public List<Order> orders = new List<Order>();
@@ -48,11 +50,12 @@ namespace SliceAndSell
         public int Stars { get; private set; }
         public float TimeLeft { get; private set; }
         public float Patience01 { get; private set; } = 1f;
+        public bool Running => Level ? running : true;   // a shift is in progress (or ended, waiting for the bell)
 
         readonly Scoring scoring = new Scoring();
         System.Random rng;
         int index = -1;
-        bool waiting, arriving, shiftEnded;
+        bool waiting, arriving, shiftEnded, running;
         float patienceLeft;
         Customer present;
 
@@ -61,7 +64,7 @@ namespace SliceAndSell
 
         void Start()
         {
-            if (Level) StartLevel(levelIndex);
+            if (Level) { if (autoStart) StartLevel(levelIndex); }
             else { if (customer) customer.SetActive(false); NextCustomer(); }
         }
 
@@ -71,6 +74,8 @@ namespace SliceAndSell
             if (present) present.Leave(CustomerMood.Neutral, customerExit.position);
             present = null;
             levelIndex = i;
+            running = true;
+            GamePause.Set(false);
             var level = Level;
             scoring.Reset();
             Served = 0; index = -1; waiting = arriving = shiftEnded = false; ShiftWon = false; Stars = 0;
@@ -89,11 +94,27 @@ namespace SliceAndSell
             return new Order { fruit = item.name, cuts = item.cuts, price = item.price, skewer = level.skewer, chili = rng.NextDouble() < level.chiliChance };
         }
 
+        // Results board buttons.
+        public void Retry() => StartLevel(levelIndex);
+        public void NextLevel() => StartLevel(ShiftWon && levelIndex + 1 < levels.Length ? levelIndex + 1 : levelIndex);
+
+        // Exit to the main menu: no shift, nobody at the counter.
+        public void StopShift()
+        {
+            CancelInvoke();
+            Dismiss(CustomerMood.Neutral);
+            waiting = arriving = shiftEnded = false;
+            running = false;
+            GamePause.Set(false);
+            Show("");
+        }
+
         // Bell, or automatically after a delivery. After the shift, the bell starts the next level (or a retry).
         public void NextCustomer()
         {
             CancelInvoke(nameof(NextCustomer));
-            if (shiftEnded) { StartLevel(ShiftWon && levelIndex + 1 < levels.Length ? levelIndex + 1 : levelIndex); return; }
+            if (Level && !running) return;
+            if (shiftEnded) { NextLevel(); return; }
             if (waiting || arriving) return;
             if (Level && Level.customers == 0) orders.Add(MakeOrder());     // continuous shift
             if (index + 1 >= orders.Count) return;
@@ -121,7 +142,7 @@ namespace SliceAndSell
         void Update()
         {
             var level = Level;
-            if (!level || shiftEnded) return;
+            if (!level || !running || shiftEnded || GamePause.Paused) return;
             if (level.shiftSeconds > 0f)
             {
                 TimeLeft = Mathf.Max(0f, TimeLeft - Time.deltaTime);
@@ -156,14 +177,14 @@ namespace SliceAndSell
             var (amount, tip) = scoring.OnServed(order.price, correct, tipsOn, Patience01);
             Served++;
             waiting = false;
-            GameEvents.RaisePaid(bag.transform.position, amount, tip, correct);
+            GameEvents.RaisePaid(cashBox ? cashBox.position : bag.transform.position, amount, tip, correct);
             Dismiss(correct ? CustomerMood.Happy : CustomerMood.Angry);
 
             bool lastFixed = index + 1 >= orders.Count && (!Level || Level.customers > 0);
             if (lastFixed && Level) EndShift();
             else
             {
-                Show(lastFixed ? "Shift over!" : correct ? $"Thanks!\n+THB {amount}" : "Hmm... not quite.");
+                Show(lastFixed ? "Shift over!" : correct ? $"Thanks!\n+฿{amount}" : "Hmm... not quite.");
                 if (!lastFixed) Invoke(nameof(NextCustomer), autoNextDelay);
             }
             return correct ? DeliveryResult.Correct : DeliveryResult.Wrong;
@@ -188,7 +209,7 @@ namespace SliceAndSell
             ShiftWon = Money >= Level.target;
             Stars = Scoring.Stars(Money, Level.target);
             GameEvents.RaiseShiftEnded(ShiftWon, Stars);
-            Show((ShiftWon ? "Shift won!" : "Shift over") + $"\nTHB {Money} / {Level.target}  " + new string('*', Stars) +
+            Show((ShiftWon ? "Shift won!" : "Shift over") + $"\n฿{Money} / ฿{Level.target}  " + new string('*', Stars) +
                  (ShiftWon ? "\nRing the bell: next" : "\nRing the bell: retry"));
         }
 
@@ -208,9 +229,9 @@ namespace SliceAndSell
         {
             if (!chalkboard) return;
             var level = Level;
-            if (!level) { chalkboard.text = $"THB {Money}\nServed {Served}/{orders.Count}"; return; }
+            if (!level) { chalkboard.text = $"฿{Money}\nServed {Served}/{orders.Count}"; return; }
             string time = level.shiftSeconds > 0f ? $"\n{(int)TimeLeft / 60}:{(int)TimeLeft % 60:00}" : $"\nServed {Served}/{orders.Count}";
-            chalkboard.text = $"THB {Money} / {level.target}\nCombo x{Combo}{time}";
+            chalkboard.text = $"฿{Money} / ฿{level.target}\nCombo x{Combo}{time}";
         }
     }
 }

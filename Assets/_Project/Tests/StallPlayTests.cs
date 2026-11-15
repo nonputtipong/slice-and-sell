@@ -34,6 +34,7 @@ namespace SliceAndSell.Tests
             bagStack = dispensers.First(d => d.prefab.GetComponent<Bag>());
             tray = Object.FindAnyObjectByType<HandoffTray>().GetComponent<XRSocketInteractor>();
             var rb = knife.GetComponent<Rigidbody>(); rb.isKinematic = true;   // the test drives it, like a held knife
+            orders.StartLevel(0);   // the scene opens on the main menu; this is pressing Start
         }
 
         [UnityTest]
@@ -141,6 +142,8 @@ namespace SliceAndSell.Tests
             Assert.AreEqual(4 + 20, orders.Money, "two clean cuts (+2 each) and the guava");
             Assert.AreEqual(1, orders.Served);
             Assert.IsNull(orders.Current, "customer leaves after paying");
+            var tutorial = Object.FindAnyObjectByType<Tutorial>();
+            Assert.Greater(tutorial.OnboardingSeconds, 0f, "serving customer 1 finishes the tutorial and records the onboarding time");
         }
 
         // ---------- helpers ----------
