@@ -397,8 +397,12 @@ public static class StallBuilder
     {
         var root = new GameObject("Knife");
         var rb = root.AddComponent<Rigidbody>(); rb.mass = 0.15f;
-        Box("Handle", root.transform, new Vector3(0, 0, 0), new Vector3(0.025f, 0.025f, 0.1f), Mat("Handle", new Color(0.35f, 0.2f, 0.1f)));
-        Box("Blade", root.transform, new Vector3(0, 0, 0.11f), new Vector3(0.003f, 0.03f, 0.12f), Mat("Steel", new Color(0.8f, 0.82f, 0.85f)));
+        var handle = Box("Handle", root.transform, new Vector3(0, 0, 0), new Vector3(0.025f, 0.025f, 0.1f), Mat("Handle", new Color(0.35f, 0.2f, 0.1f)));
+        var blade = Box("Blade", root.transform, new Vector3(0, 0, 0.11f), new Vector3(0.003f, 0.03f, 0.12f), Mat("Steel", new Color(0.8f, 0.82f, 0.85f)));
+        // The Blender knife (black handle, brass rivets, bolster, pointed blade with a bright edge) over the two boxes,
+        // which keep the colliders.
+        if (StreetBuilder.Prop("Knife", root.transform, Vector3.zero, 0f))
+            foreach (var b in new[] { handle, blade }) b.GetComponent<Renderer>().enabled = false;
         var attach = new GameObject("Attach").transform; attach.SetParent(root.transform, false);
         var grab = Grab<KnifeGrab>(root, LayerDefault, dynamicAttach: false);
         grab.attachTransform = attach;
@@ -652,6 +656,8 @@ public static class StallBuilder
         cam.transform.LookAt(new Vector3(0, 1.15f, 0.75f));
         cam.fieldOfView = 80;
         ShaderUtil.allowAsyncCompilation = false;   // otherwise the first frame shows placeholder shaders
+        // Batch-mode renders don't run the skinning update: skin the saved (Idle) pose at render time instead.
+        foreach (var smr in Object.FindObjectsByType<SkinnedMeshRenderer>(FindObjectsSortMode.None)) smr.forceMatrixRecalculationPerRender = true;
         Shot(cam, "Logs/stall-preview.png");
         // The reference framing (look image 1): eye height behind the cart, looking down the soi.
         cam.transform.position = new Vector3(0, 1.65f, -0.25f); cam.transform.LookAt(new Vector3(0, 1.05f, 4f)); cam.fieldOfView = 75;

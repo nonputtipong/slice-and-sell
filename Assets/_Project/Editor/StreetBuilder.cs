@@ -21,6 +21,7 @@ public static class StreetBuilder
     const string MatDir = "Assets/_Project/Materials/Street/";
     public const float AlleyHalf = 3.5f;        // shopfronts at x = ±3.5
     const float AlleyStart = -8f, AlleyEnd = 33f;
+    const float WorkLightIntensity = 1.1f;      // baked work light over the counter (tune by the player-view render)
     static readonly Dictionary<string, Material> materials = new Dictionary<string, Material>();
     static TMP_FontAsset font;
 
@@ -234,7 +235,7 @@ public static class StreetBuilder
         {
             var t = Model($"{Third}Polyfork/{file}.glb", p, pos, yaw, isStatic: false);
             var anim = t.GetComponentInChildren<Animation>();
-            if (anim && anim.GetClip("Idle")) { anim.clip = anim.GetClip("Idle"); anim.playAutomatically = true; }
+            if (anim && anim.GetClip("Idle")) { anim.clip = anim.GetClip("Idle"); anim.playAutomatically = true; anim.clip.SampleAnimation(anim.gameObject, 0f); }   // saved in Idle, not the T-pose
         }
     }
 
@@ -263,6 +264,16 @@ public static class StreetBuilder
         Prop("LanternOrange", stall, new Vector3(0.7f, 2.32f, 0.92f), 0f);
         // Stock on the lower shelf, under the counter: closed boxes, clearly storage.
         Fit(Third + "Kenney/FurnitureKit/cardboardBoxClosed.glb", stall, new Vector3(-0.35f, 0.3f, 0.5f), 0f, 0.26f, isStatic: false);
+        // Work light: two warm points under the bulb rail, Baked only (no runtime cost on Quest). The cart is dynamic,
+        // so they reach the board, trays and crates through the light probes at counter height (BakeLighting), and
+        // leave a warm pool on the pavement round the cart.
+        for (int i = -1; i <= 1; i += 2)
+        {
+            var l = new GameObject("Work light").AddComponent<Light>();
+            l.transform.SetParent(stall, false); l.transform.localPosition = new Vector3(0.35f * i, 1.9f, 0.5f);
+            l.type = LightType.Point; l.lightmapBakeType = LightmapBakeType.Baked;
+            l.color = new Color(1f, 0.82f, 0.6f); l.intensity = WorkLightIntensity; l.range = 2.5f; l.shadows = LightShadows.None;
+        }
         return cart;
     }
 
@@ -361,6 +372,8 @@ public static class StreetBuilder
         for (float x = -1.2f; x <= 1.21f; x += 0.6f)
             for (float z = -0.6f; z <= 1.81f; z += 0.6f)
                 foreach (float y in new[] { 0.4f, 1.0f, 1.6f, 2.3f }) probes.Add(new Vector3(x, y, z));
+        for (float x = -0.6f; x <= 0.61f; x += 0.3f)          // finer layer just over the work area (board, trays, crates)
+            for (float z = 0.3f; z <= 0.91f; z += 0.3f) probes.Add(new Vector3(x, 0.95f, z));
         for (float z = 2.5f; z <= 28f; z += 2.5f)
             foreach (float x in new[] { -1.6f, 0f, 1.6f })
                 foreach (float y in new[] { 0.5f, 1.8f }) probes.Add(new Vector3(x, y, z));

@@ -56,7 +56,7 @@ PAL = {
     "CrateYellow": "#F2C230", "CrateGreen": "#3E9E4A", "CrateRed": "#D2392E", "CrateBlue": "#2E6FC0",
     "CoolerMetal": "#9DAFB3", "Rust": "#8C5634",
     "BowlPurple": "#8E52C8", "NotePink": "#E9A3BE", "NoteGreen": "#93C99C", "NoteBlue": "#8DB6E2",
-    "CoinSilver": "#C8CCD0", "TrayOrange": "#F08A2A",
+    "CoinSilver": "#C8CCD0", "TrayOrange": "#F08A2A", "BladeEdge": "#E6EBEF",
 }
 
 
@@ -747,6 +747,25 @@ def handover_tray():
     return p
 
 
+def knife():
+    """The paring knife (the game's main tool), along +Z like the Knife prefab: origin at the handle centre (the
+    controller grip), handle z -0.05..0.045, bolster to 0.055, blade to the tip at z 0.175; spine up, edge down at
+    y = -0.015 (the cut markers). Black handle with brass rivets so it reads on the wooden counter and the board."""
+    p = Part("Knife")
+    p.lathe([(0, -0.051), (0.010, -0.051), (0.0125, -0.046), (0.0122, 0.0), (0.0112, 0.045), (0, 0.045)], 8,
+            "BlackRubber", axis=V(0, 0, 1), phase=0.5)
+    for z in (-0.03, -0.005, 0.02):                       # rivets through the handle, both sides
+        p.box((-0.0128, -0.0022, z - 0.0022), (0.0128, 0.0022, z + 0.0022), "Gold")
+    p.box((-0.006, -0.0135, 0.045), (0.006, 0.0125, 0.056), "MetalSteel")      # bolster
+    blade = [(0.0125, 0.055), (0.0125, 0.12), (0.009, 0.148), (0.0, 0.166), (-0.009, 0.176),
+             (-0.015, 0.15), (-0.015, 0.06), (-0.013, 0.055)]                  # (y, z) side profile
+    p.prism([(-0.00125, y, z) for y, z in blade], (0.0025, 0, 0), "MetalSteel")
+    p.prism([(-0.0014, y, z) for y, z in [(-0.0105, 0.058), (-0.0105, 0.148), (-0.004, 0.166),
+                                          (-0.0095, 0.1735), (-0.0152, 0.15), (-0.0152, 0.058)]],
+            (0.0028, 0, 0), "BladeEdge")                                      # bright bevel along the edge to the tip
+    return p
+
+
 # name -> builder, tri budget, origin note, expected Unity bounds (axis: (min, max), None = unchecked)
 BASE = "centre of the base at y = 0"
 PROPS = [
@@ -785,6 +804,8 @@ PROPS = [
     ("ServiceBell", service_bell, SMALL, BASE, {"y": (0, 0.062), "x": (-0.045, 0.045)}),
     ("HandoverTray", handover_tray, SMALL, BASE + "; floor top at y = 0.006, rim to 0.025",
      {"y": (0, 0.025), "x": (-0.11, 0.11), "z": (-0.09, 0.09)}),
+    ("Knife", knife, SMALL, "handle centre (the grip); blade along +Z, edge down at y = -0.015",
+     {"z": (-0.051, 0.176), "y": (-0.0153, 0.0128)}),
     ("PriceSign", price_sign, SMALL, "stick bottom; board faces +Z (text on the face at z = 0.010)",
      {"y": (0, 0.255)}),
 ]

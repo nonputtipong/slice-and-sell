@@ -767,6 +767,35 @@
       "emissive": []
     },
     {
+      "name": "Knife",
+      "file": "Knife.glb",
+      "origin": "handle centre (the grip); blade along +Z, edge down at y = -0.015",
+      "budget": 600,
+      "tris": 160,
+      "min": [
+        -0.0128,
+        -0.0152,
+        -0.051
+      ],
+      "max": [
+        0.0128,
+        0.0125,
+        0.176
+      ],
+      "size": [
+        0.0256,
+        0.0277,
+        0.227
+      ],
+      "materials": [
+        "BlackRubber",
+        "Gold",
+        "MetalSteel",
+        "BladeEdge"
+      ],
+      "emissive": []
+    },
+    {
       "name": "PriceSign",
       "file": "PriceSign.glb",
       "origin": "stick bottom; board faces +Z (text on the face at z = 0.010)",

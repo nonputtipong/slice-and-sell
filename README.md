@@ -22,7 +22,7 @@ its extras and hand it over before their patience runs out. Controllers and hand
 | Cat | `Assets/_Project/ThirdParty/PolyPizza/cat.glb` | "Cat" by Poly by Google, Poly Pizza (https://poly.pizza, file static.poly.pizza/5d32eb38-9546-4ce4-aa77-bcef9328ee61.glb), Creative Commons Attribution (CC BY). Unmodified mesh, rescaled. |
 | Houseplant | `Assets/_Project/ThirdParty/PolyPizza/houseplant.glb` | "Houseplant" by Quaternius, Poly Pizza, CC0 1.0 |
 | Shiba Inu (soi dog) | `Assets/_Project/ThirdParty/PolyPizza/shiba-inu.glb` | "Shiba Inu" by Quaternius, Poly Pizza, CC0 1.0 |
-| Street props (pushcart, rainbow umbrella, bulb strings, paper lanterns, scale, ice tray, plastic bags, stools, AC units, electricity poles and cables, shop signs, roller shutters, spirit house, baskets, cooler, money bowl, bunting, price sign, service bell, hand-over tray) | `Assets/_Project/Models/Street/` | Original, made for this project with `Tools/Blender/make_street_props.py` |
+| Street props (pushcart, rainbow umbrella, bulb strings, paper lanterns, scale, ice tray, plastic bags, stools, AC units, electricity poles and cables, shop signs, roller shutters, spirit house, baskets, cooler, money bowl, bunting, price sign, service bell, hand-over tray, paring knife) | `Assets/_Project/Models/Street/` | Original, made for this project with `Tools/Blender/make_street_props.py` |
 | Holiday Kit models (string lights, lanterns) | `Assets/_Project/ThirdParty/Kenney/HolidayKit/` | Holiday Kit by Kenney (www.kenney.nl), CC0 1.0 |
 | Stall, knife, cleaver, extras, crates (primitive shapes) | `Assets/_Project/Prefabs/`, `Assets/_Project/Materials/` | Original |
 | Impact Sounds | `Assets/_Project/ThirdParty/Kenney/ImpactSounds/` | Kenney (www.kenney.nl), CC0 1.0 |
