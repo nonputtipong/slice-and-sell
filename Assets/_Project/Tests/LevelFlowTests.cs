@@ -1,5 +1,7 @@
 using System.Collections;
+using System.Linq;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -151,6 +153,43 @@ namespace SliceAndSell.Tests
             orders.StartLevel(0);
             Assert.AreEqual(first, string.Join(",", orders.orders.ConvertAll(o => o.fruit + o.chili)));
             Object.Destroy(a);
+        }
+
+        // Level 3: a second customer waits at the queue spot (no order yet) and steps up when the counter frees.
+        [UnityTest]
+        public IEnumerator QueueLevelKeepsASecondCustomerWaitingInLine()
+        {
+            var q = Level("Night Market", 0f, 0, 700, 30f); q.queue = true;
+            orders = new GameObject("Orders").AddComponent<OrderManager>();
+            orders.customer = new GameObject("Customer");
+            orders.menu = new[] { new FruitMenuItem { name = "Guava", cuts = 2, price = 20 } };
+            orders.levels = new[] { q };
+            orders.autoNextDelay = 0.05f;
+            orders.customerPrefabs = new[] { "Salaryman", "Student" }.Select(n =>
+                AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/_Project/Prefabs/Customers/{n}.prefab").GetComponent<Customer>()).ToArray();
+            orders.customerEntry = new GameObject("Entry").transform; orders.customerEntry.position = new Vector3(-2.5f, 0, 1.35f);
+            orders.counterSpot = new GameObject("Counter").transform; orders.counterSpot.position = new Vector3(0, 0, 1.35f);
+            orders.customerExit = new GameObject("Exit").transform; orders.customerExit.position = new Vector3(2.5f, 0, 1.35f);
+            orders.queueSpot = new GameObject("Queue").transform; orders.queueSpot.position = new Vector3(-0.9f, 0, 1.8f);
+            yield return null;
+
+            yield return UntilCustomer(8f);
+            var second = orders.Queued;
+            Assert.IsNotNull(second, "someone is waiting in line");
+            Assert.AreEqual(1, orders.orders.Count, "only the customer at the counter has ordered");
+            for (float t = 0; (second.transform.position - orders.queueSpot.position).sqrMagnitude > 1e-4f && t < 8f; t += Time.deltaTime) yield return null;
+            Assert.Less(Vector3.Distance(second.transform.position, orders.queueSpot.position), 0.01f, "they stand at the queue spot");
+
+            orders.Deliver(Bag(2));
+            yield return UntilCustomer(8f);
+            Assert.Less(Vector3.Distance(second.transform.position, orders.counterSpot.position), 0.01f, "the one in line stepped up to the counter");
+            Assert.IsNotNull(orders.Queued, "and a new one joined the line");
+            Assert.AreNotSame(second, orders.Queued);
+
+            orders.StopShift();
+            Assert.IsNull(orders.Queued, "exit to menu sends the line away");
+            foreach (var t in new[] { orders.customerEntry, orders.counterSpot, orders.customerExit, orders.queueSpot }) Object.Destroy(t.gameObject);
+            Object.Destroy(q);
         }
     }
 }

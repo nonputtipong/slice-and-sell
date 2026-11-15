@@ -105,7 +105,7 @@ GameObject:
   - component: {fileID: 8896476013826628155}
   - component: {fileID: 6239390079849363691}
   - component: {fileID: 830669124617991238}
-  - component: {fileID: 6625412965823604351}
+  - component: {fileID: 9078233785302599738}
   m_Layer: 0
   m_Name: Bag
   m_TagString: Untagged
@@ -353,7 +353,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: SliceAndSell::SliceAndSell.HoldOnTrackingLoss
   holdSeconds: 2
---- !u!114 &6625412965823604351
+--- !u!114 &9078233785302599738
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -362,11 +362,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 1766992976713814740}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6f13afa522a547c4eb8217c621316c80, type: 3}
+  m_Script: {fileID: 11500000, guid: 34389c23069704831978692fd7129893, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HCD545.InteractionFeedback
+  m_EditorClassIdentifier: SliceAndSell::SliceAndSell.ItemFeedback
   hoverColour: {r: 0.55, g: 0.8, b: 1, a: 1}
   selectColour: {r: 1, g: 0.34, b: 0.17, a: 1}
+  blend: 0.45
   selectSound: {fileID: 8300000, guid: 4fcee18b5279c433aa51ada4b02a73e5, type: 3}
   releaseSound: {fileID: 8300000, guid: 114e94df2b79e4cb8b3c9d49197acbf5, type: 3}
   hapticStrength: 0.5

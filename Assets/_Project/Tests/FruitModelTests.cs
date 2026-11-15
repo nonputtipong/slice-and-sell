@@ -10,7 +10,7 @@ namespace SliceAndSell.Tests
     // of stage k lies entirely on one side of each of the first k guide planes.
     public class FruitModelTests
     {
-        static readonly string[] Names = { "Guava", "Mango", "Pineapple" };
+        static readonly string[] Names = { "Guava", "Mango", "Pineapple", "Watermelon" };
         const float Tolerance = 0.0015f;   // m
 
         static Fruit Load(string name) => AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/_Project/Prefabs/{name}.prefab").GetComponent<Fruit>();
@@ -71,7 +71,10 @@ namespace SliceAndSell.Tests
                     if (first) { b = new Bounds(p, Vector3.zero); first = false; } else b.Encapsulate(p);
                 }
             Assert.AreEqual(0f, b.min.y, 0.002f, "bottom at y = 0 (rests on the board)");
-            Assert.Less(Mathf.Max(b.size.x, b.size.z), 0.18f, "fits the fruit socket");
+            if (name == "Watermelon")  // too long for the fruit socket: lies on the 0.32 x 0.22 m board instead
+                Assert.IsTrue(b.size.x < 0.30f && b.size.z < 0.20f, $"fits the board ({b.size.x:F3} x {b.size.z:F3} m)");
+            else
+                Assert.Less(Mathf.Max(b.size.x, b.size.z), 0.18f, "fits the fruit socket");
         }
     }
 }

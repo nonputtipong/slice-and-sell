@@ -212,6 +212,78 @@
           "depth": 0.15
         }
       ]
+    },
+    {
+      "name": "Watermelon",
+      "file": "Watermelon.glb",
+      "price": 40,
+      "juiceColor": "#F2545B",
+      "cleaver": true,
+      "size": [
+        0.22,
+        0.1505,
+        0.1483
+      ],
+      "cutVolume": {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0752,
+          0.0
+        ],
+        "size": [
+          0.22,
+          0.1505,
+          0.1483
+        ]
+      },
+      "stages": [
+        "Stage0",
+        "Stage1",
+        "Stage2",
+        "Stage3"
+      ],
+      "cuts": [
+        {
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "point": [
+            0.0,
+            0.0752,
+            0
+          ],
+          "depth": 0.1504
+        },
+        {
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "point": [
+            -0.055,
+            0.0724,
+            0
+          ],
+          "depth": 0.1346
+        },
+        {
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "point": [
+            0.055,
+            0.0724,
+            0
+          ],
+          "depth": 0.1346
+        }
+      ]
     }
   ]
 }

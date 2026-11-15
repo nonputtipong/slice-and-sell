@@ -23,4 +23,5 @@ MonoBehaviour:
   patienceSeconds: 45
   skewer: 1
   chiliChance: 0.4
+  queue: 0
   seed: 2

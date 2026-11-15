@@ -30,6 +30,7 @@ namespace SliceAndSell
         public FruitMenuItem[] menu;
         public Customer[] customerPrefabs;
         public Transform customerEntry, counterSpot, customerExit;
+        public Transform queueSpot;         // where the next customer waits in a queue level
         public Transform cashBox;           // coins clink here (GDD > Spatial audio); the bag's position if unset
 
         [Header("M1 greybox mode")]
@@ -47,6 +48,7 @@ namespace SliceAndSell
         public LevelDefinition Level => levels != null && levels.Length > 0 ? levels[levelIndex] : null;
         public bool ShiftOver => Level ? shiftEnded : !waiting && index + 1 >= orders.Count;
         public bool ShiftWon { get; private set; }
+        public Customer Queued => queued;
         public int Stars { get; private set; }
         public float TimeLeft { get; private set; }
         public float Patience01 { get; private set; } = 1f;
@@ -57,7 +59,7 @@ namespace SliceAndSell
         int index = -1;
         bool waiting, arriving, shiftEnded, running;
         float patienceLeft;
-        Customer present;
+        Customer present, queued;
 
         void OnEnable() => Fruit.AnyCut += OnCut;
         void OnDisable() => Fruit.AnyCut -= OnCut;
@@ -73,6 +75,7 @@ namespace SliceAndSell
             CancelInvoke();
             if (present) present.Leave(CustomerMood.Neutral, customerExit.position);
             present = null;
+            DismissQueue();
             levelIndex = i;
             running = true;
             GamePause.Set(false);
@@ -103,6 +106,7 @@ namespace SliceAndSell
         {
             CancelInvoke();
             Dismiss(CustomerMood.Neutral);
+            DismissQueue();
             waiting = arriving = shiftEnded = false;
             running = false;
             GamePause.Set(false);
@@ -123,8 +127,15 @@ namespace SliceAndSell
             if (customerPrefabs != null && customerPrefabs.Length > 0)
             {
                 arriving = true;
-                present = Instantiate(customerPrefabs[index % customerPrefabs.Length], customerEntry.position, Quaternion.identity, transform);
-                present.Arrive(customerEntry.position, counterSpot.position, OnArrived);
+                // The one waiting in line steps up; otherwise someone walks in from the street.
+                if (queued) { present = queued; queued = null; }
+                else present = Instantiate(customerPrefabs[index % customerPrefabs.Length], customerEntry.position, Quaternion.identity, transform);
+                present.Arrive(present.transform.position, counterSpot.position, OnArrived);
+                if (Level && Level.queue && queueSpot && (Level.customers == 0 || index + 1 < orders.Count))
+                {
+                    queued = Instantiate(customerPrefabs[(index + 1) % customerPrefabs.Length], customerEntry.position, Quaternion.identity, transform);
+                    queued.Arrive(customerEntry.position, queueSpot.position, null);
+                }
                 Show("");
             }
             else { if (customer) customer.SetActive(true); OnArrived(); }
@@ -185,7 +196,7 @@ namespace SliceAndSell
             else
             {
                 Show(lastFixed ? "Shift over!" : correct ? $"Thanks!\n+฿{amount}" : "Hmm... not quite.");
-                if (!lastFixed) Invoke(nameof(NextCustomer), autoNextDelay);
+                if (!lastFixed) Invoke(nameof(NextCustomer), NextDelay);
             }
             return correct ? DeliveryResult.Correct : DeliveryResult.Wrong;
         }
@@ -197,13 +208,14 @@ namespace SliceAndSell
             GameEvents.RaiseWalkedOut(present ? present.transform.position : counterSpot ? counterSpot.position : transform.position);
             Dismiss(CustomerMood.Angry);
             Show("They left...");
-            Invoke(nameof(NextCustomer), autoNextDelay);
+            Invoke(nameof(NextCustomer), NextDelay);
         }
 
         void EndShift()
         {
             CancelInvoke(nameof(NextCustomer));
             if (waiting || arriving) Dismiss(CustomerMood.Neutral);
+            DismissQueue();
             waiting = arriving = false;
             shiftEnded = true;
             ShiftWon = Money >= Level.target;
@@ -217,6 +229,14 @@ namespace SliceAndSell
         {
             if (present) { present.SetPatience(0f, false); present.Leave(mood, customerExit.position); present = null; }
             else if (customer) customer.SetActive(false);
+        }
+
+        // Someone already in line steps up sooner: that is the rush of a queue level.
+        float NextDelay => queued ? Mathf.Min(1f, autoNextDelay) : autoNextDelay;
+
+        void DismissQueue()
+        {
+            if (queued) { queued.Leave(CustomerMood.Neutral, customerExit.position); queued = null; }
         }
 
         void Show(string card)

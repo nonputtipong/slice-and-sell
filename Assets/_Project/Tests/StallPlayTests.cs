@@ -27,7 +27,7 @@ namespace SliceAndSell.Tests
             yield return EditorSceneManager.LoadSceneAsyncInPlayMode(ScenePath, new LoadSceneParameters(LoadSceneMode.Single));
             yield return null; yield return null;
             board = Object.FindAnyObjectByType<CuttingBoard>();
-            knife = Object.FindAnyObjectByType<Knife>();
+            knife = Object.FindObjectsByType<Knife>(FindObjectsSortMode.None).Single(k => !k.cleaver);   // the paring knife, not the cleaver
             orders = Object.FindAnyObjectByType<OrderManager>();
             var dispensers = Object.FindObjectsByType<Dispenser>(FindObjectsSortMode.None);
             bin = dispensers.First(d => d.prefab.GetComponent<Fruit>() && d.prefab.GetComponent<Fruit>().fruitName == "Guava");

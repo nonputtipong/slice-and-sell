@@ -26,6 +26,7 @@ namespace SliceAndSell
         public GameObject[] stages;         // stage 0 = whole, last = fully cut; stages.Length = guides.Length + 1
         public CutGuide[] guides;
         public Collider cutVolume;          // convex collider the blade must pass through
+        public bool needsCleaver;           // too big for the paring knife (watermelon): only the two-handed cleaver cuts it
 
         public event Action<Fruit, CutInfo> Cut;
         public static event Action<Fruit, CutInfo> AnyCut;     // scoring listens here, then raises GameEvents.Cut with the combo

@@ -11,6 +11,8 @@ namespace SliceAndSell
         public Transform edgeStart, edgeEnd;    // the two ends of the cutting edge
         public CuttingBoard board;
         public float powerCutSpeed = 1.5f;      // m/s, bonus only (GDD: Power Cut)
+        public bool cleaver;                    // the cleaver cuts only big fruit (Fruit.needsCleaver), the knife everything else
+        public int handsRequired = 1;           // cleaver: 2, so letting go with one hand mid-chop cuts nothing
 
         const int EdgeSamples = 5;
         const float SubStep = 0.01f;
@@ -69,6 +71,9 @@ namespace SliceAndSell
 
         void Complete(Fruit fruit, Vector3 point, float speed)
         {
+            // Wrong tool for this fruit, or a two-handed tool held in one hand: a thunk, no cut.
+            if (fruit.needsCleaver != cleaver || (handsRequired > 1 && (!grab || grab.interactorsSelecting.Count < handsRequired)))
+            { GameEvents.RaiseCutMissed(point); return; }
             float angle = fruit.AngleToGuide(BladeNormal);
             if (angle > Fruit.CountAngle) { GameEvents.RaiseCutMissed(point); return; }
             bool clean = angle <= Fruit.CleanAngle && fruit.DistanceToGuide(point) <= Fruit.CleanDistance;

@@ -71,11 +71,12 @@ namespace SliceAndSell
                 { "Grab", "Grip button", "Pinch, or close your fist" },
                 { "Cut", "Push the blade down along the line", "Push the blade down along the line" },
                 { "Bell", "Poke it (or point + trigger)", "Poke it (or point + pinch)" },
+                { "Cleaver", "Both grips on the handle, chop down", "Both hands on the handle, push down" },
                 { "Menu", "Menu button", "Turn your left palm up" },
             };
             for (int r = 0; r < rows.GetLength(0); r++)
             {
-                float y = 75 - r * 48;
+                float y = 75 - r * 44;     // 5 rows above the Back button
                 UiKit.Label(howTo, rows[r, 0], new Vector2(-220, y), new Vector2(120, 44), BodyText, UiKit.Accent);
                 UiKit.Label(howTo, rows[r, 1], new Vector2(-45, y), new Vector2(210, 44), BodyText, UiKit.Cream);
                 UiKit.Label(howTo, rows[r, 2], new Vector2(185, y), new Vector2(210, 44), BodyText, UiKit.Cream);

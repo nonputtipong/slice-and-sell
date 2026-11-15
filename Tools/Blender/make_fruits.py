@@ -1,7 +1,7 @@
-"""Builds the Slice & Sell fruit models (Guava, Mango, Pineapple) with all cut stages.
+"""Builds the Slice & Sell fruit models (Guava, Mango, Pineapple, Watermelon) with all cut stages.
 
 Run:  Blender -b --python Tools/Blender/make_fruits.py [-- --render <dir>]
-Writes Assets/_Project/Models/Fruits/{Guava,Mango,Pineapple}.glb and fruits.json,
+Writes Assets/_Project/Models/Fruits/{Guava,Mango,Pineapple,Watermelon}.glb and fruits.json,
 re-imports each GLB to check it, and optionally renders exploded stage strips.
 """
 import bpy, bmesh, json, math, os, random, struct, sys
@@ -192,6 +192,36 @@ def pineapple_crown(bm):
                 fs.append(bm.faces.new((m[k], tv, m[(k + 1) % 3])))
             for f in fs:
                 f.material_index = 2
+
+
+def watermelon():
+    """Baby watermelon lying on its side, long axis along Unity X. Stripes run pole to pole:
+    around the barrel, each wide dark segment (material 0) is followed by a narrow light one (material 2)."""
+    A, B, C = 0.11, 0.075, 0.08   # semi-axes: Unity X, Z, Y (Y gets flattened ~1 cm at the belly)
+    R, N = 10, 8                   # rings along X (none on a cut plane), stripes around
+    ang = []
+    for j in range(N):
+        ang += [2 * math.pi * j / N, 2 * math.pi * (j + 0.7) / N]
+    rings = []
+    for i in range(1, R + 1):
+        s = -math.cos(math.pi * i / (R + 1))
+        k = math.sqrt(1 - s * s)
+        wave = 0.06 * math.sin(i * 1.7)  # stripes wobble a little along the length
+        ring = []
+        for a in ang:
+            y = C + C * k * math.sin(a + wave)
+            y = y if y >= 0.012 else 0.012 + (y - 0.012) * 0.3  # flattened belly so it rests on the board
+            ring.append(U(A * s, y, B * k * math.cos(a + wave)))
+        rings.append(ring)
+    bm = bmesh.new()
+    faces = loft(bm, U(-A, C, 0), rings, U(A, C, 0))
+    per = 2 + R - 1  # loft adds this many faces per segment, segment by segment
+    for i, f in enumerate(faces):
+        f.material_index = 2 if (i // per) % 2 else 0
+    zmin = min(v.co.z for v in bm.verts)
+    for v in bm.verts:
+        v.co.z -= zmin
+    return bm
 
 
 # ---------------------------------------------------------------- cutting
@@ -395,6 +425,30 @@ def build_pineapple():
     return mats, stages, meta
 
 
+def build_watermelon():
+    base = watermelon()
+    nx = U(1, 0, 0)
+    xs = [0.0, -0.055, 0.055]  # halve it, then halve each half
+    rind = (nx, None, 0.009, 3)  # pale rind ring (cap material 1) around red flesh (3)
+    stages = [[("Piece0", cut(base, []))]]
+    for k in (1, 2, 3):
+        stages.append([(f"Piece{i}", p) for i, p in enumerate(slices(base, nx, xs[:k], inset_for=rind))])
+    lo, hi = bbox([base])
+    cuts = []
+    for x in xs:
+        z0, z1 = section_height(base, nx, x)
+        cuts.append({"normal": [1, 0, 0], "point": r4([x, (z0 + z1) / 2, 0]), "depth": round(z1 - z0, 4)})
+    mn, mx = unity_box(lo, hi)
+    size = [b - a for a, b in zip(mn, mx)]
+    meta = {"name": "Watermelon", "file": "Watermelon.glb", "price": 40, "juiceColor": "#F2545B", "cleaver": True,
+            "size": r4(size),
+            "cutVolume": {"type": "box", "center": r4([(a + b) / 2 for a, b in zip(mn, mx)]), "size": r4(size)},
+            "stages": ["Stage0", "Stage1", "Stage2", "Stage3"], "cuts": cuts}
+    mats = [("WatermelonSkin", "#1F5A2A"), ("WatermelonRind", "#E4F2C8"), ("WatermelonStripe", "#5E9E3E"),
+            ("WatermelonFlesh", "#E8394A")]
+    return mats, stages, meta
+
+
 # ---------------------------------------------------------------- verify + render
 
 def verify(path, meta):
@@ -494,7 +548,7 @@ def main():
     render_dir = argv[argv.index("--render") + 1] if "--render" in argv else None
     os.makedirs(OUT, exist_ok=True)
     metas = []
-    for build in (build_guava, build_mango, build_pineapple):
+    for build in (build_guava, build_mango, build_pineapple, build_watermelon):
         mats, stages, meta = build()
         path = os.path.join(OUT, meta["file"])
         export(meta["name"], mats, stages, path)

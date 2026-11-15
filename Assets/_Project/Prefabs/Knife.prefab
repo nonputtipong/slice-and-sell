@@ -248,9 +248,9 @@ GameObject:
   - component: {fileID: 2214877440707781}
   - component: {fileID: 8299357342171837913}
   - component: {fileID: 1338988530339105098}
-  - component: {fileID: 2704707809320586567}
+  - component: {fileID: 5206422845811033735}
   - component: {fileID: 7551573474784540859}
-  - component: {fileID: 1945006426973448287}
+  - component: {fileID: 8294534879953701205}
   m_Layer: 0
   m_Name: Knife
   m_TagString: Untagged
@@ -453,7 +453,9 @@ MonoBehaviour:
   edgeEnd: {fileID: 7887722459507602717}
   board: {fileID: 0}
   powerCutSpeed: 1.5
---- !u!114 &2704707809320586567
+  cleaver: 0
+  handsRequired: 1
+--- !u!114 &5206422845811033735
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -462,12 +464,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 7869025246262225215}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bf2d65e389dd03045a3b3c5402a007de, type: 3}
+  m_Script: {fileID: 11500000, guid: 74b4679517ee34b78811448786728152, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HCD545.RespawnOnDrop
-  belowFloor: -1
-  floorHeight: 0.25
-  returnAfterSeconds: 3
+  m_EditorClassIdentifier: SliceAndSell::SliceAndSell.ReturnToRack
+  board: {fileID: 0}
+  belowBoard: 0.05
+  maxDistance: 1
+  delay: 2
+  fallLimit: -1
+  whoosh: {fileID: 0}
 --- !u!114 &7551573474784540859
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -481,7 +486,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: SliceAndSell::SliceAndSell.HoldOnTrackingLoss
   holdSeconds: 2
---- !u!114 &1945006426973448287
+--- !u!114 &8294534879953701205
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -490,11 +495,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 7869025246262225215}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6f13afa522a547c4eb8217c621316c80, type: 3}
+  m_Script: {fileID: 11500000, guid: 34389c23069704831978692fd7129893, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HCD545.InteractionFeedback
+  m_EditorClassIdentifier: SliceAndSell::SliceAndSell.ItemFeedback
   hoverColour: {r: 0.55, g: 0.8, b: 1, a: 1}
   selectColour: {r: 1, g: 0.34, b: 0.17, a: 1}
+  blend: 0.45
   selectSound: {fileID: 8300000, guid: 089d76d29417448aeb97c49be6f774af, type: 3}
   releaseSound: {fileID: 8300000, guid: 5fa6096c18970497f9ffe22fa5b4ec4d, type: 3}
   hapticStrength: 0.5

@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 3992164842024705017}
   - component: {fileID: 8610944706963676103}
   - component: {fileID: 3188402505845931753}
-  - component: {fileID: 2785201755344220483}
+  - component: {fileID: 6549343349482761325}
   m_Layer: 0
   m_Name: Skewer
   m_TagString: Untagged
@@ -259,7 +259,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: SliceAndSell::SliceAndSell.DespawnWhenDropped
   belowHeight: 0.5
   seconds: 2
---- !u!114 &2785201755344220483
+--- !u!114 &6549343349482761325
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -268,11 +268,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 1686061423920161969}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6f13afa522a547c4eb8217c621316c80, type: 3}
+  m_Script: {fileID: 11500000, guid: 34389c23069704831978692fd7129893, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HCD545.InteractionFeedback
+  m_EditorClassIdentifier: SliceAndSell::SliceAndSell.ItemFeedback
   hoverColour: {r: 0.55, g: 0.8, b: 1, a: 1}
   selectColour: {r: 1, g: 0.34, b: 0.17, a: 1}
+  blend: 0.45
   selectSound: {fileID: 8300000, guid: 52c24c5a375fc463da956fd756b510b3, type: 3}
   releaseSound: {fileID: 8300000, guid: 2ca1ed10e0deb479485e898cf3eb0898, type: 3}
   hapticStrength: 0.5

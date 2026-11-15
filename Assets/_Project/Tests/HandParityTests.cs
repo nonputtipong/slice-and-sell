@@ -30,7 +30,7 @@ namespace SliceAndSell.Tests
             yield return null; yield return null;
             modality = Object.FindAnyObjectByType<XRInputModalityManager>();
             board = Object.FindAnyObjectByType<CuttingBoard>();
-            var knifeScript = Object.FindAnyObjectByType<Knife>();
+            var knifeScript = Object.FindObjectsByType<Knife>(FindObjectsSortMode.None).Single(k => !k.cleaver);   // the paring knife, not the cleaver
             knife = knifeScript.GetComponent<XRGrabInteractable>();
             var dispensers = Object.FindObjectsByType<Dispenser>(FindObjectsSortMode.None);
             fruit = dispensers.First(d => d.prefab.GetComponent<Fruit>()).Current;
