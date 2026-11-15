@@ -13,7 +13,11 @@ its extras and hand it over before their patience runs out. Controllers and hand
 | Asset | Where | Source and licence |
 | --- | --- | --- |
 | Guava, mango, pineapple, watermelon models and cut stages | `Assets/_Project/Models/Fruits/` | Original, made for this project with `Tools/Blender/make_fruits.py` |
-| Stall, knife, cleaver, bags, extras, crates (primitive shapes) | `Assets/_Project/Prefabs/`, `Assets/_Project/Materials/` | Original |
+| Food Kit models (cutting board, paper bag) | `Assets/_Project/ThirdParty/Kenney/FoodKit/` | Food Kit by Kenney (www.kenney.nl), CC0 1.0 |
+| City Kit (Commercial) models (shophouses, awning) | `Assets/_Project/ThirdParty/Kenney/CityKitCommercial/` | City Kit (Commercial) by Kenney (www.kenney.nl), CC0 1.0 |
+| City Kit (Roads) models (road, pavement, street lights) | `Assets/_Project/ThirdParty/Kenney/CityKitRoads/` | City Kit (Roads) by Kenney (www.kenney.nl), CC0 1.0 |
+| Holiday Kit models (string lights, lanterns) | `Assets/_Project/ThirdParty/Kenney/HolidayKit/` | Holiday Kit by Kenney (www.kenney.nl), CC0 1.0 |
+| Stall, knife, cleaver, extras, crates (primitive shapes) | `Assets/_Project/Prefabs/`, `Assets/_Project/Materials/` | Original |
 | Impact Sounds | `Assets/_Project/ThirdParty/Kenney/ImpactSounds/` | Kenney (www.kenney.nl), CC0 1.0 |
 | Interface Sounds | `Assets/_Project/ThirdParty/Kenney/InterfaceSounds/` | Kenney (www.kenney.nl), CC0 1.0 |
 | Salaryman Commuter | `Assets/_Project/ThirdParty/Polyfork/salaryman-commuter-4170c1.glb` | Salaryman Commuter by Polyfork (https://polyfork.dev/asset/salaryman-commuter-4170c1), CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Unmodified mesh; used as a customer. |

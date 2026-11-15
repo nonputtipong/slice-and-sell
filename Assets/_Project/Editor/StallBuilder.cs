@@ -72,6 +72,7 @@ public static class StallBuilder
             if (Lab5Roots.Contains(go.name)) Object.DestroyImmediate(go);
         var room = scene.GetRootGameObjects().First(g => g.name == "Room").transform;
         foreach (var n in Lab5RoomParts) { var t = room.Find(n); if (t) Object.DestroyImmediate(t.gameObject); }
+        StreetBuilder.Build(room);
 
         // Stationary game (GDD > Comfort): no move, turn or teleport, so teleport/snap turn/vignette aren't needed.
         foreach (var p in Object.FindObjectsByType<UnityEngine.XR.Interaction.Toolkit.Locomotion.LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None))
@@ -129,14 +130,17 @@ public static class StallBuilder
 
         // Cutting board: fruit socket (fruit rests on the board top), guide line, scoop spot (bag socket) to its right.
         var boardGo = new GameObject("Cutting board"); boardGo.transform.SetParent(stall);
-        Box("Board", boardGo.transform, new Vector3(-0.05f, 0.91f, 0.52f), new Vector3(0.32f, 0.02f, 0.22f), Mat("Board", new Color(0.86f, 0.72f, 0.5f)));
+        var boardBox = Box("Board", boardGo.transform, new Vector3(-0.05f, 0.91f, 0.52f), new Vector3(0.32f, 0.02f, 0.22f), Mat("Board", new Color(0.86f, 0.72f, 0.5f)));
+        // Kenney Food Kit board as the look (0.82 x 0.58, turned 90 degrees and scaled to 0.32 x 0.23); the box keeps the collider.
+        boardBox.GetComponent<Renderer>().enabled = false;
+        var boardLook = StreetBuilder.Prop("FoodKit", "cutting-board", boardGo.transform, new Vector3(-0.05f, 0.9f, 0.52f), 90f, 0.39f);
         var board = boardGo.AddComponent<CuttingBoard>();
         board.fruitSocket = Socket("Fruit socket", boardGo.transform, new Vector3(-0.05f, 0.98f, 0.52f), new Vector3(0.18f, 0.14f, 0.18f), LayerFruit);
         board.fruitSocket.attachTransform = Marker(board.fruitSocket.transform, "Attach", new Vector3(0, 0.92f - 0.98f, 0));
         board.scoopSocket = Socket("Scoop spot", boardGo.transform, new Vector3(0.2f, 0.995f, 0.52f), new Vector3(0.14f, 0.16f, 0.1f), LayerBag);
         var scoopMark = Box("Scoop mark", boardGo.transform, new Vector3(0.2f, 0.902f, 0.52f), new Vector3(0.13f, 0.004f, 0.08f), Mat("Mark", new Color(1f, 0.8f, 0.2f)), false);
         board.guideLine = GuideLine(boardGo.transform);
-        SocketFeedback(board.fruitSocket, boardGo.transform.Find("Board").gameObject);
+        SocketFeedback(board.fruitSocket, boardLook.GetComponentInChildren<Renderer>().gameObject);
         SocketFeedback(board.scoopSocket, scoopMark);
 
         // Endless fruit crates on the left: guava nearest the board, mango behind it, pineapple to the far left,
@@ -224,6 +228,7 @@ public static class StallBuilder
         // Juice, crunch, coins (GameEvents listeners), and the market around the stall.
         EffectsSetup.Create(stall);
         StreetSounds(stall, orders.counterSpot);
+        StreetBuilder.DressStall(stall);
     }
 
     // ---------- audio and font ----------
@@ -408,7 +413,8 @@ public static class StallBuilder
         var rb = root.AddComponent<Rigidbody>(); rb.mass = 0.05f;
         var col = root.AddComponent<BoxCollider>(); col.size = new Vector3(0.12f, 0.15f, 0.07f);
         Grab(root, LayerDefault | LayerBag, dynamicAttach: true);
-        Box("Paper", root.transform, Vector3.zero, new Vector3(0.12f, 0.15f, 0.07f), Mat("Bag", new Color(0.93f, 0.9f, 0.8f)), false);
+        // Kenney Food Kit paper bag (0.31 x 0.85 x 0.58, standing on its base), turned and scaled to about 0.1 x 0.15 x 0.06.
+        StreetBuilder.Prop("FoodKit", "bag", root.transform, new Vector3(0f, -0.075f, 0f), 90f, 0.15f / 0.845f).name = "Paper";
         var b = root.AddComponent<Bag>();
         b.filledVisual = Box("Slices", root.transform, new Vector3(0, 0.08f, 0), new Vector3(0.1f, 0.03f, 0.05f), Mat("Slices", new Color(0.98f, 0.8f, 0.55f)), false);
         b.skewerVisual = Box("Skewer", root.transform, new Vector3(0.035f, 0.11f, 0), new Vector3(0.004f, 0.12f, 0.004f), Mat("Skewer", new Color(0.85f, 0.7f, 0.45f)), false);
@@ -611,6 +617,16 @@ public static class StallBuilder
         foreach (var c in sign.GetComponentsInChildren<Canvas>(true)) c.gameObject.SetActive(true);
         sign.Show();
         Shot(cam, "Logs/stall-menu.png");
+
+        // The street around the stall: from behind and above the player, and looking back from the counter.
+        foreach (var c in sign.GetComponentsInChildren<Canvas>(true)) c.gameObject.SetActive(false);
+        cam.fieldOfView = 70;
+        cam.transform.position = new Vector3(-3.5f, 2.6f, -2.5f); cam.transform.LookAt(new Vector3(0.5f, 1.2f, 4f));
+        Shot(cam, "Logs/stall-street.png");
+        cam.transform.position = new Vector3(0, 1.6f, 0.6f); cam.transform.LookAt(new Vector3(0, 1.4f, -3f));
+        Shot(cam, "Logs/stall-behind.png");
+        cam.transform.position = new Vector3(0.4f, 1.6f, 2.8f); cam.transform.LookAt(new Vector3(0, 1.4f, 0.5f));
+        Shot(cam, "Logs/stall-front.png");     // what a customer sees: awning, lights, lanterns
         Object.DestroyImmediate(cam.gameObject);
         Debug.Log("[StallBuilder] Previews written to Logs/stall-preview.png and Logs/stall-menu.png");
     }
