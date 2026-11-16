@@ -124,7 +124,7 @@ namespace SliceAndSell.Tests
             manager.HoverExit((IXRHoverInteractor)left, grab);
             for (int r = 0; r < rends.Length; r++)
                 for (int m = 0; m < 2; m++)
-                    Assert.IsTrue(Near(originals[r][m], Block(rends[r], m)), $"{rends[r].name}[{m}] back to its own colour");
+                    Assert.IsTrue(Cleared(rends[r], m), $"{rends[r].name}[{m}] back to its own colour: no override left (SRP Batcher)");
         }
 
         // ---------- SocketFeedback ----------
@@ -159,7 +159,7 @@ namespace SliceAndSell.Tests
             manager.SelectExit((IXRSelectInteractor)socket, grab);
             manager.HoverExit((IXRHoverInteractor)socket, grab);
             yield return Seconds(0.3f);                         // after the flash
-            Assert.IsTrue(Near(original, Block(tray, 0)), "back to normal once the bag is taken out");
+            Assert.IsTrue(Cleared(tray, 0), "back to normal once the bag is taken out: no override left");
         }
 
         // ---------- helpers ----------
@@ -231,6 +231,14 @@ namespace SliceAndSell.Tests
             var b = new MaterialPropertyBlock();
             r.GetPropertyBlock(b, material);
             return b.GetColor(BaseColorId);
+        }
+
+        // No property block on that slot: the renderer draws its shared material's own colour and stays SRP-batchable.
+        static bool Cleared(Renderer r, int material)
+        {
+            var b = new MaterialPropertyBlock();
+            r.GetPropertyBlock(b, material);
+            return b.isEmpty && !r.HasPropertyBlock();
         }
 
         static void AssertAllTinted(Renderer[] rends, Color[][] originals, string state)

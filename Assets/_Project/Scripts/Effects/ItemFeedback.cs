@@ -107,7 +107,17 @@ namespace SliceAndSell
         }
 
         public void Set(Color target, float amount) => Write(target, amount);
-        public void Restore() => Write(Color.white, 0f);
+        // Back to the shared material's own colour by removing the overrides, not by writing the original back: a
+        // renderer with a property block is left out of URP's SRP Batcher, so every item touched once would stay unbatched.
+        public void Restore()
+        {
+            for (int r = 0; r < renderers.Length; r++)
+            {
+                if (!renderers[r]) continue;
+                renderers[r].SetPropertyBlock(null);
+                for (int m = 0; m < originals[r].Length; m++) renderers[r].SetPropertyBlock(null, m);
+            }
+        }
 
         void Write(Color target, float amount)
         {

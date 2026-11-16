@@ -48,6 +48,28 @@ namespace SliceAndSell.Tests
             Assert.IsNotNull(orders.Current, "a customer is waiting");
         }
 
+        // The chalkboard is refreshed every frame but only rebuilt when what it shows changes: no garbage per frame.
+        [UnityTest]
+        public IEnumerator ChalkboardRebuildsOnlyWhenItChanges()
+        {
+            yield return Begin(l1, l2);
+            var board = new GameObject("Chalkboard").AddComponent<TMPro.TextMeshPro>();
+            orders.chalkboard = board;
+            orders.StartLevel(1);       // timed: the clock is on the board
+            yield return UntilCustomer();
+            var update = (System.Action)System.Delegate.CreateDelegate(typeof(System.Action), orders,
+                typeof(OrderManager).GetMethod("UpdateBoard", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic));
+            update();
+            string shown = board.text;
+            StringAssert.Contains("/ ฿400", shown);
+            StringAssert.Contains("Combo x0", shown);
+            var noGarbage = UnityEngine.TestTools.Constraints.ConstraintExtensions.AllocatingGCMemory(Is.Not);   // Unity's GC-alloc constraint
+            Assert.That(() => update(), noGarbage, "same second, same money: nothing rebuilt");
+            yield return new WaitForSeconds(1.1f);
+            Assert.AreNotEqual(shown, board.text, "the clock on the board still moves on");
+            Object.Destroy(board.gameObject);
+        }
+
         [UnityTest]
         public IEnumerator Level1EndsAfterThreeCustomersAndBellStartsLevel2()
         {

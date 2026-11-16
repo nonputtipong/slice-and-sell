@@ -60,6 +60,9 @@ namespace SliceAndSell
         bool waiting, arriving, shiftEnded, running;
         float patienceLeft;
         Customer present, queued;
+        // What the chalkboard shows now: it is rebuilt only when one of these changes (Update calls it every frame).
+        LevelDefinition boardLevel;
+        int boardMoney = int.MinValue, boardTarget, boardCombo, boardSecond, boardServed, boardCount;
 
         void OnEnable() => Fruit.AnyCut += OnCut;
         void OnDisable() => Fruit.AnyCut -= OnCut;
@@ -249,9 +252,14 @@ namespace SliceAndSell
         {
             if (!chalkboard) return;
             var level = Level;
+            int second = (int)TimeLeft, target = level ? level.target : 0;
+            if (level == boardLevel && Money == boardMoney && target == boardTarget && Combo == boardCombo && second == boardSecond
+                && Served == boardServed && orders.Count == boardCount) return;      // nothing new: no string, no garbage
+            boardLevel = level; boardMoney = Money; boardTarget = target; boardCombo = Combo; boardSecond = second;
+            boardServed = Served; boardCount = orders.Count;
             // Same lines as ever; the money line leads (bigger, bold), combo in the menus' gold.
             if (!level) { chalkboard.text = $"<size=125%><b>฿{Money}</b></size>\nServed {Served}/{orders.Count}"; return; }
-            string time = level.shiftSeconds > 0f ? $"\n{(int)TimeLeft / 60}:{(int)TimeLeft % 60:00}" : $"\nServed {Served}/{orders.Count}";
+            string time = level.shiftSeconds > 0f ? $"\n{second / 60}:{second % 60:00}" : $"\nServed {Served}/{orders.Count}";
             chalkboard.text = $"<size=125%><b>฿{Money}</b> / ฿{level.target}</size>\n<color=#FFC73D>Combo x{Combo}</color>{time}";
         }
     }
