@@ -8,6 +8,8 @@
 *.anim        text -diff merge=unityyamlmerge eol=lf
 *.controller  text -diff merge=unityyamlmerge eol=lf
 *.physicMaterial text -diff merge=unityyamlmerge eol=lf
+# Baked lighting is binary despite .asset: line-ending conversion strips bytes and Unity can't load it.
+*LightingData.asset binary
 
 # Images / textures
 *.png  filter=lfs diff=lfs merge=lfs -text

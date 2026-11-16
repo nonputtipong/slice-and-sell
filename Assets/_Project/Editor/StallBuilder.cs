@@ -312,7 +312,8 @@ public static class StallBuilder
             var s = r.bounds.size;
             bool small = Mathf.Max(s.x, Mathf.Max(s.y, s.z)) < 0.4f;
             bool bulbs = r.GetComponentsInParent<Transform>(true).Any(t => t.name.StartsWith("BulbString"));
-            if (!small && !bulbs) continue;
+            bool radio = r.name == "Radio look" || r.name == "Radio shelf";   // the low sun throws their long shadow onto the street ahead
+            if ((!small && !bulbs) || radio) continue;
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             off++;
         }
