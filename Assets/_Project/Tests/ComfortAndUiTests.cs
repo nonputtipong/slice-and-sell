@@ -83,6 +83,41 @@ namespace SliceAndSell.Tests
             Assert.AreEqual(standing, stall.position.y, 1e-4f);
         }
 
+        // #12: grabbables interpolate (50 Hz physics, 72-90 Hz display), and that never drags a teleport or the seated drop
+        // over a frame: a tool sent back to its rack is drawn at the rack, and resting tools drop with the stall.
+        [UnityTest]
+        public IEnumerator GrabbablesInterpolateWithoutLaggingTeleports()
+        {
+            yield return LoadStall();
+            var grabbables = Object.FindObjectsByType<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>(FindObjectsSortMode.None)
+                .Select(g => g.gameObject)
+                .Concat(Object.FindObjectsByType<Dispenser>(FindObjectsSortMode.None).Select(d => d.prefab)).ToArray();
+            Assert.GreaterOrEqual(grabbables.Length, 9);
+            foreach (var g in grabbables)
+                Assert.AreEqual(RigidbodyInterpolation.Interpolate, g.GetComponent<Rigidbody>().interpolation, g.name);
+
+            var knife = Object.FindAnyObjectByType<KnifeGrab>().GetComponent<ReturnToRack>();
+            yield return new WaitForSeconds(0.5f);                          // settled on the rack
+            Vector3 home = knife.transform.position;
+            knife.transform.position += new Vector3(0.5f, 0.3f, 0f);
+            yield return new WaitForFixedUpdate(); yield return null;
+            knife.Return();
+            for (int f = 0; f < 3; f++)
+            {
+                yield return null;
+                Assert.Less(Vector3.Distance(home, knife.transform.position), 0.01f, $"frame {f}: drawn at the rack, not on the way back");
+            }
+
+            yield return new WaitForSeconds(0.5f);
+            float standing = knife.transform.position.y;
+            GameSettings.Seated = true;
+            for (int f = 0; f < 3; f++)
+            {
+                yield return null;
+                Assert.AreEqual(standing - GameSettings.SeatedDrop, knife.transform.position.y, 0.01f, $"frame {f}: the resting knife drops with the stall");
+            }
+        }
+
         // The still stall decor is drawn as combined batches (BatchDecor), and seated mode still lowers it with the stall.
         [UnityTest]
         public IEnumerator StallDecorIsCombinedAndStillDropsWhenSeated()

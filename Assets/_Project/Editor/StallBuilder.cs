@@ -575,6 +575,8 @@ public static class StallBuilder
         g.interactionLayers = layers;
         g.movementType = XRBaseInteractable.MovementType.Instantaneous;
         g.useDynamicAttach = dynamicAttach;
+        // Physics steps at 50 Hz, the headset draws at 72-90: without it a dropped or thrown item judders as it falls.
+        go.GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.Interpolate;
         return g;
     }
 
