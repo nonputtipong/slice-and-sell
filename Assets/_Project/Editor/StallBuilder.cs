@@ -52,6 +52,7 @@ public static class StallBuilder
         Build();
         var scene = EditorSceneManager.OpenScene(ScenePath);
         StreetBuilder.BakeLighting();
+        StreetBuilder.BakeOcclusion();
         EditorSceneManager.SaveScene(scene);
     }
 

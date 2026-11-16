@@ -102,6 +102,28 @@ namespace SliceAndSell.Tests
             Assert.AreEqual(standing, cart.bounds.center.y, 1e-3f);
         }
 
+        // Baked occlusion (BuildAndBake): looking down the soi, the shophouses hide part of the street from the camera.
+        [UnityTest]
+        public IEnumerator BakedOcclusionCullsTheHiddenStreet()
+        {
+            yield return LoadStall();
+            foreach (var c in Object.FindObjectsByType<Camera>(FindObjectsSortMode.None)) c.enabled = false;
+            foreach (var l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None)) l.shadows = LightShadows.None;   // a shadow pass also counts as visible
+            var cam = new GameObject("Probe camera").AddComponent<Camera>();
+            cam.fieldOfView = 100f; cam.farClipPlane = 80f;
+            cam.targetTexture = new RenderTexture(256, 256, 24);
+            cam.transform.position = new Vector3(0f, 1.6f, 0f);
+            var renderers = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None);
+            var visible = new int[2];
+            for (int oc = 0; oc < 2; oc++)
+            {
+                cam.useOcclusionCulling = oc == 1;
+                yield return null; yield return null;
+                visible[oc] = renderers.Count(r => r.isVisible);
+            }
+            Assert.Less(visible[1], visible[0] - 10, $"occlusion culling hides street renderers ({visible[0]} -> {visible[1]})");
+        }
+
         [UnityTest]
         public IEnumerator SceneOpensOnTheMainMenuNotAShift()
         {

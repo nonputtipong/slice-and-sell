@@ -394,6 +394,18 @@ public static class StreetBuilder
         Debug.Log($"[StreetBuilder] Lighting bake {(ok ? "done" : "FAILED")} in {(System.DateTime.Now - t0).TotalSeconds:0} s, {LightmapSettings.lightmaps.Length} lightmap(s)");
     }
 
+    // Occlusion culling: the shophouses (static, flagged Occluder/Occludee by Model) hide the soi behind them. The stall
+    // and everything that moves are not static, so they are never occluders; Unity still culls them behind the street.
+    public static void BakeOcclusion()
+    {
+        StaticOcclusionCulling.smallestOccluder = 2f;     // a shophouse front counts; plants, bins and scooters don't
+        StaticOcclusionCulling.smallestHole = 0.25f;      // gaps between houses and under awnings stay see-through
+        StaticOcclusionCulling.backfaceThreshold = 100f;
+        var t0 = System.DateTime.Now;
+        bool ok = StaticOcclusionCulling.Compute();
+        Debug.Log($"[StreetBuilder] Occlusion bake {(ok ? "done" : "FAILED")} in {(System.DateTime.Now - t0).TotalSeconds:0} s");
+    }
+
     // ---------- placing models ----------
 
     // A Kenney model as the look of a game object whose own primitive keeps the collider (cutting board, bag).
