@@ -91,6 +91,15 @@ public static class StallBuilder
         foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(t => t.name.Contains("Teleport Interactor")))
             t.gameObject.SetActive(false);
 
+        // Quest performance (tasks/handoff-quest3-performance.md, Tier 1).
+        var rig = Object.FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>();
+        rig.Camera.farClipPlane = 80f;                       // the fog ends at 70 m: nothing past it is visible
+        rig.gameObject.AddComponent<FoveationLevel>();       // fixed foveated rendering (OpenXR feature on for Android)
+        // The editor-only XR Interaction Simulator (EditorSimulatorSwitch turns it on in the Editor without a headset)
+        // stays out of player builds, and with it ~14 MB of XRI sample assets it references.
+        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(t => t.name == "XR Interaction Simulator"))
+            t.gameObject.tag = "EditorOnly";
+
         BuildStall(fruitPrefabs, knifePrefab, cleaverPrefab, bag, skewer, chili, customers, menu, levels);
 
         EditorSceneManager.SaveScene(scene);

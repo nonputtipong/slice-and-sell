@@ -57,6 +57,7 @@ public static class CustomerPrefabBuilder
             // Save the bones in Idle's first frame, arms relaxed at the sides, not glTF's T-pose bind pose: that is what
             // the editor, previews and the first frame before Idle plays show.
             if (anim.clip) anim.clip.SampleAnimation(model, 0f);
+            StreetBuilder.CheapSkinning(model.transform);
             customer.anim = anim;
 
             customer.head = model.GetComponentsInChildren<Transform>().FirstOrDefault(t => t.name == "Head");

@@ -236,7 +236,16 @@ public static class StreetBuilder
             var t = Model($"{Third}Polyfork/{file}.glb", p, pos, yaw, isStatic: false);
             var anim = t.GetComponentInChildren<Animation>();
             if (anim && anim.GetClip("Idle")) { anim.clip = anim.GetClip("Idle"); anim.playAutomatically = true; anim.clip.SampleAnimation(anim.gameObject, 0f); }   // saved in Idle, not the T-pose
+            CheapSkinning(t);
         }
+    }
+
+    // Quest: animate and skin only while on screen, against the imported (T-pose) bounds, which hold every idle/walk
+    // pose, instead of recomputing bounds from the bones every frame.
+    public static void CheapSkinning(Transform character)
+    {
+        foreach (var a in character.GetComponentsInChildren<Animation>(true)) a.cullingType = AnimationCullingType.BasedOnRenderers;
+        foreach (var smr in character.GetComponentsInChildren<SkinnedMeshRenderer>(true)) smr.updateWhenOffscreen = false;
     }
 
     // ---------- the stall's dressing (under the stall: seated mode lowers it with the counter) ----------
