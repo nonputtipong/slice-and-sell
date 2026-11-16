@@ -83,6 +83,25 @@ namespace SliceAndSell.Tests
             Assert.AreEqual(standing, stall.position.y, 1e-4f);
         }
 
+        // The still stall decor is drawn as combined batches (BatchDecor), and seated mode still lowers it with the stall.
+        [UnityTest]
+        public IEnumerator StallDecorIsCombinedAndStillDropsWhenSeated()
+        {
+            yield return LoadStall();
+            var batch = Object.FindAnyObjectByType<BatchDecor>();
+            Assert.IsNotNull(batch, "the stall root combines its decor");
+            Assert.Greater(batch.Combined, 50, "most of the decor is combined");
+            var cart = batch.decor.Select(g => g.GetComponent<MeshRenderer>()).First(r => r.GetComponentsInParent<Transform>().Any(t => t.name == "PushCart"));
+            Assert.IsTrue(cart.isPartOfStaticBatch, "the cart is in a combined batch");
+            float standing = cart.bounds.center.y;
+            GameSettings.Seated = true;
+            yield return null;
+            Assert.AreEqual(standing - GameSettings.SeatedDrop, cart.bounds.center.y, 1e-3f, "the combined cart drops with the stall");
+            GameSettings.Seated = false;
+            yield return null;
+            Assert.AreEqual(standing, cart.bounds.center.y, 1e-3f);
+        }
+
         [UnityTest]
         public IEnumerator SceneOpensOnTheMainMenuNotAShift()
         {

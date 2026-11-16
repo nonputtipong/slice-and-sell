@@ -278,6 +278,24 @@ public static class StallBuilder
         // The pushcart look replaces the counter box's own (the box keeps the collider); umbrella, bulbs, lanterns, scale...
         if (StreetBuilder.DressStall(stall, counter.transform.position)) counter.GetComponent<Renderer>().enabled = false;
         TrimShadows(stall);
+        PickDecorBatches(stall);
+    }
+
+    // Quest draw calls (handoff #6): the still decor under the stall is combined into a few batches at start
+    // (BatchDecor), relative to the stall root so seated mode still lowers it. Left out: everything you pick up, UI
+    // canvases and text, the tutorial's glow/arrow, customers and order logic, street audio (its motorbike moves),
+    // effects, and anything hidden (the collider boxes behind looks).
+    static void PickDecorBatches(Transform stall)
+    {
+        var picks = stall.GetComponentsInChildren<MeshRenderer>(false)
+            .Where(r => r.enabled && r.TryGetComponent(out MeshFilter f) && f.sharedMesh
+                        && !r.GetComponent<TMP_Text>()
+                        && !r.GetComponentInParent<XRGrabInteractable>(true) && !r.GetComponentInParent<Canvas>(true)
+                        && !r.GetComponentInParent<Tutorial>(true) && !r.GetComponentInParent<OrderManager>(true)
+                        && !r.GetComponentInParent<StreetAudio>(true) && !r.GetComponentInParent<ParticleSystem>(true))
+            .Select(r => r.gameObject).ToArray();
+        stall.gameObject.AddComponent<BatchDecor>().decor = picks;
+        Debug.Log($"[StallBuilder] {picks.Length} stall decor renderers combined at start (BatchDecor)");
     }
 
     // Quest shadow pass (tasks/handoff-quest3-performance.md #7): the stall is dynamic (seated mode moves it), so all of it
