@@ -277,6 +277,27 @@ public static class StallBuilder
         StreetSounds(stall, orders.counterSpot);
         // The pushcart look replaces the counter box's own (the box keeps the collider); umbrella, bulbs, lanterns, scale...
         if (StreetBuilder.DressStall(stall, counter.transform.position)) counter.GetComponent<Renderer>().enabled = false;
+        TrimShadows(stall);
+    }
+
+    // Quest shadow pass (tasks/handoff-quest3-performance.md #7): the stall is dynamic (seated mode moves it), so all of it
+    // goes through the sun's real-time shadow map. Small decor (crate walls, lanterns, bulb strings, bowl, bell, tray,
+    // cards, labels) stops casting; the cart, the umbrella, the chalkboard and everything you pick up keep their shadows,
+    // which ground the counter and help judge depth.
+    static void TrimShadows(Transform stall)
+    {
+        int off = 0;
+        foreach (var r in stall.GetComponentsInChildren<Renderer>(true))
+        {
+            if (r.shadowCastingMode == UnityEngine.Rendering.ShadowCastingMode.Off || r.GetComponentInParent<XRGrabInteractable>(true)) continue;
+            var s = r.bounds.size;
+            bool small = Mathf.Max(s.x, Mathf.Max(s.y, s.z)) < 0.4f;
+            bool bulbs = r.GetComponentsInParent<Transform>(true).Any(t => t.name.StartsWith("BulbString"));
+            if (!small && !bulbs) continue;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            off++;
+        }
+        Debug.Log($"[StallBuilder] {off} small stall renderers no longer cast real-time shadows");
     }
 
     // ---------- audio and font ----------
