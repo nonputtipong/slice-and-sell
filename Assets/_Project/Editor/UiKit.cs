@@ -69,7 +69,8 @@ public static class UiKit
 
     // Button at `posMm` (from the panel centre). Poke depresses the face 4 mm with a click (Lab 5 PokeButtonFeedback);
     // hover/select/release colours come from the Button's colour tint. A rounded face over a darker lip (the face
-    // sinks onto it when poked); `primary` = the screen's main action, orange with cream text.
+    // sinks onto it when poked); `primary` = the screen's main action, orange with cream text. Every button also
+    // takes dwell-to-press (DwellPress) when the player turns it on.
     public static Button Button(RectTransform panel, string label, Vector2 posMm, Vector2 sizeMm, UnityAction onClick = null, bool primary = false)
     {
         sizeMm = Vector2.Max(sizeMm, new Vector2(MinButton, MinButton));
@@ -103,6 +104,14 @@ public static class UiKit
 
         var fb = go.AddComponent<PokeButtonFeedback>();
         fb.face = frt; fb.depth = 4f; fb.pressSound = press; fb.releaseSound = release;
+
+        // Dwell-to-press progress (GameSettings.Dwell): a bar along the face's bottom edge that fills left to right.
+        var bar = Rounded(frt, "Dwell bar", Vector2.zero, Vector2.zero, primary ? Cream : Accent, 2f);
+        bar.type = Image.Type.Filled; bar.fillMethod = Image.FillMethod.Horizontal; bar.fillAmount = 0f;
+        var brt = bar.rectTransform;
+        brt.anchorMin = new Vector2(0f, 0f); brt.anchorMax = new Vector2(1f, 0f);
+        brt.sizeDelta = new Vector2(-8f, 4f); brt.anchoredPosition = new Vector2(0f, 4f);
+        go.AddComponent<SliceAndSell.DwellPress>().fill = bar;
 
         var t = Label(frt, label, Vector2.zero, sizeMm - new Vector2(6, 4), BodySize, primary ? Cream : Ink, style: FontStyles.Bold);
         t.rectTransform.anchorMin = Vector2.zero; t.rectTransform.anchorMax = Vector2.one; t.rectTransform.sizeDelta = new Vector2(-6, -4);

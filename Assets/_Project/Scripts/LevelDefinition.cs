@@ -12,7 +12,7 @@ namespace SliceAndSell
         public string[] fruits = { "Guava" };
         public int target = 60;             // THB to win (Level 1: serving every customer is the goal)
         public float patienceSeconds;       // 0 = patience paused, no tips (Level 1)
-        public bool skewer;                 // every bag needs a skewer
+        public bool skewer;                 // every bowl needs a skewer
         [Range(0f, 1f)] public float chiliChance;
         public bool queue;                  // a second customer waits in line at OrderManager.queueSpot (Level 3); still one order at a time
         public int seed = 1;                // same order sequence every run (repeatable tests and walkthroughs)

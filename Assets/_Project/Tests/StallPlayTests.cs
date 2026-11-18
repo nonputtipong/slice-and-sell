@@ -14,7 +14,7 @@ namespace SliceAndSell.Tests
     public class StallPlayTests
     {
         const string ScenePath = "Assets/_Project/Scenes/Stall.unity";
-        CuttingBoard board; Knife knife; OrderManager orders; Dispenser bin, bagStack; XRSocketInteractor tray;
+        CuttingBoard board; Knife knife; OrderManager orders; Dispenser bin, bowlStack; XRSocketInteractor tray;
 
         // Batch mode runs frames as fast as it can; a fixed 72 Hz clock makes the knife speeds real
         // (0.003 m/frame = 0.2 m/s hand push, 0.042 m/frame = 3 m/s chop).
@@ -31,7 +31,7 @@ namespace SliceAndSell.Tests
             orders = Object.FindAnyObjectByType<OrderManager>();
             var dispensers = Object.FindObjectsByType<Dispenser>(FindObjectsSortMode.None);
             bin = dispensers.First(d => d.prefab.GetComponent<Fruit>() && d.prefab.GetComponent<Fruit>().fruitName == "Guava");
-            bagStack = dispensers.First(d => d.prefab.GetComponent<Bag>());
+            bowlStack = dispensers.First(d => d.prefab.GetComponent<Bowl>());
             tray = Object.FindAnyObjectByType<HandoffTray>().GetComponent<XRSocketInteractor>();
             var rb = knife.GetComponent<Rigidbody>(); rb.isKinematic = true;   // the test drives it, like a held knife
             orders.StartLevel(0);   // the scene opens on the main menu; this is pressing Start
@@ -41,7 +41,7 @@ namespace SliceAndSell.Tests
         public IEnumerator SceneStartsReady()
         {
             Assert.IsNotNull(bin.Current, "fruit bin has a fruit");
-            Assert.IsNotNull(bagStack.Current, "bag stack has a bag");
+            Assert.IsNotNull(bowlStack.Current, "bowl stack has a bowl");
             Assert.AreSame(board, knife.board);
             Assert.IsNotNull(orders.Level, "the scene runs levels");
             Assert.AreEqual(0, orders.levelIndex, "starts at Level 1");
@@ -128,15 +128,15 @@ namespace SliceAndSell.Tests
             Assert.IsTrue(fruit.IsFullyCut);
             Assert.AreEqual(2, orders.Combo, "both cuts on the guides are clean");
 
-            var bag = bagStack.Current.GetComponent<Bag>();
-            yield return DropAt(bag.gameObject, board.scoopSocket.transform.position);
-            Assert.IsTrue(bag.IsFilled, "slices go into the bag on the scoop spot");
+            var bowl = bowlStack.Current.GetComponent<Bowl>();
+            yield return DropAt(bowl.gameObject, board.scoopSocket.transform.position);
+            Assert.IsTrue(bowl.IsFilled, "slices go into the bowl on the scoop spot");
             Assert.IsTrue(fruit == null, "fruit is consumed");
 
-            // A hand holding the bag stops the scoop socket from taking it back; here the socket is paused instead.
+            // A hand holding the bowl stops the scoop socket from taking it back; here the socket is paused instead.
             int before = orders.Money;
             board.scoopSocket.socketActive = false;
-            yield return DropAt(bag.gameObject, tray.transform.position);
+            yield return DropAt(bowl.gameObject, tray.transform.position);
             board.scoopSocket.socketActive = true;
             Assert.AreEqual(20, orders.Money - before, "Level 1: base price, combo x1, no tips");
             Assert.AreEqual(4 + 20, orders.Money, "two clean cuts (+2 each) and the guava");
@@ -145,6 +145,138 @@ namespace SliceAndSell.Tests
             var tutorial = Object.FindAnyObjectByType<Tutorial>();
             Assert.Greater(tutorial.OnboardingSeconds, 0f, "serving customer 1 finishes the tutorial and records the onboarding time");
         }
+
+        // Item 6 of the Quest playtest: the cut fruit goes straight into a bowl wherever it stands (here, still on its
+        // stack); nobody has to carry the bowl to the board first. Then it is served as usual.
+        [UnityTest]
+        public IEnumerator CutFruitLetGoOverABowlGoesIn()
+        {
+            yield return UntilCustomer();
+            var fruit = (Fruit)null;
+            yield return PlaceFruit(f => fruit = f);
+            yield return Push(fruit, 1f, 0.003f);
+            yield return Push(fruit, 1f, 0.003f);
+            Assert.IsTrue(fruit.IsFullyCut);
+
+            var bowl = bowlStack.Current.GetComponent<Bowl>();
+            board.fruitSocket.socketActive = false;         // the hand lifts it off the board
+            yield return DropAt(fruit.gameObject, bowl.transform.position + Vector3.up * 0.07f);
+            board.fruitSocket.socketActive = true;
+            Assert.IsTrue(bowl.IsFilled, "let go over the bowl: the slices are in it");
+            Assert.AreEqual("Guava", bowl.Contents);
+            Assert.AreEqual(2, bowl.Cuts);
+            Assert.IsTrue(fruit == null, "the fruit is used up");
+
+            int before = orders.Money;
+            yield return DropAt(bowl.gameObject, tray.transform.position);
+            Assert.AreEqual(20, orders.Money - before, "served and paid");
+        }
+
+        [UnityTest]
+        public IEnumerator UncutFruitStaysOutOfTheBowl()
+        {
+            var bowl = bowlStack.Current.GetComponent<Bowl>();
+            var fruit = bin.Current.GetComponent<Fruit>();
+            yield return DropAt(fruit.gameObject, bowl.transform.position + Vector3.up * 0.07f);
+            Assert.IsFalse(bowl.IsFilled, "a whole fruit is not an order");
+            Assert.IsTrue(fruit != null);
+        }
+
+        [UnityTest]
+        public IEnumerator HeldCutFruitOverTheBowlWaitsForTheRelease()
+        {
+            var fruit = (Fruit)null;
+            yield return PlaceFruit(f => fruit = f);
+            yield return Push(fruit, 1f, 0.003f);
+            yield return Push(fruit, 1f, 0.003f);
+            var hand = new GameObject("Test hand"); hand.AddComponent<SphereCollider>().isTrigger = true;
+            var direct = hand.AddComponent<XRDirectInteractor>();
+            board.fruitSocket.socketActive = false;
+            hand.transform.position = fruit.transform.position;
+            yield return null;
+            direct.StartManualInteraction((UnityEngine.XR.Interaction.Toolkit.Interactables.IXRSelectInteractable)fruit.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>());
+            yield return null;
+            var bowl = bowlStack.Current.GetComponent<Bowl>();
+            var over = bowl.transform.position + Vector3.up * 0.07f;
+            fruit.GetComponent<Rigidbody>().isKinematic = true;
+            for (int i = 0; i < 10; i++) { hand.transform.position = over; fruit.transform.position = over; yield return new WaitForFixedUpdate(); }
+            Assert.IsFalse(bowl.IsFilled, "still in the hand");
+            fruit.GetComponent<Rigidbody>().isKinematic = false;
+            direct.EndManualInteraction();
+            for (int i = 0; i < 10; i++) yield return new WaitForFixedUpdate();
+            board.fruitSocket.socketActive = true;
+            Assert.IsTrue(bowl.IsFilled, "let go: in it goes");
+            Object.Destroy(hand);
+        }
+
+        // Item 1 of the Quest playtest: every bin makes a new item when the waiting one is grabbed, knocked out of the
+        // bin, or destroyed without a grab. And it does not make extra ones while the first just settles.
+        [UnityTest]
+        public IEnumerator EveryBinKeepsOneItemWaiting()
+        {
+            var bins = Object.FindObjectsByType<Dispenser>(FindObjectsSortMode.None);
+            Assert.GreaterOrEqual(bins.Length, 7, "4 fruit crates, bowls, skewers, chilies");
+            var first = bins.Select(d => d.Current).ToArray();
+            yield return new WaitForSeconds(2f);
+            for (int i = 0; i < bins.Length; i++)
+                Assert.AreSame(first[i], bins[i].Current, $"{bins[i].name}: the item settled in its bin, no respawn");
+
+            // Knocked out of the bin (not grabbed).
+            foreach (var d in bins) { var rb = d.Current.GetComponent<Rigidbody>(); rb.isKinematic = true; d.Current.transform.position += new Vector3(0, 0.3f, 0); }
+            yield return new WaitForSeconds(0.6f);
+            for (int i = 0; i < bins.Length; i++)
+            {
+                Assert.IsNotNull(bins[i].Current, $"{bins[i].name}: a new item after a knock");
+                Assert.AreNotSame(first[i], bins[i].Current, $"{bins[i].name}: a new one, not the knocked one");
+                Object.Destroy(first[i].gameObject);
+            }
+
+            // Used up or despawned without a grab.
+            var second = bins.Select(d => d.Current).ToArray();
+            foreach (var g in second) Object.Destroy(g.gameObject);
+            yield return new WaitForSeconds(0.6f);
+            for (int i = 0; i < bins.Length; i++)
+                Assert.IsTrue(bins[i].Current != null && bins[i].Current != second[i], $"{bins[i].name}: a new item after a destroy");
+
+            // Grabbed.
+            var hand = new GameObject("Test hand"); hand.AddComponent<SphereCollider>().isTrigger = true;
+            var direct = hand.AddComponent<XRDirectInteractor>();
+            foreach (var d in bins)
+            {
+                var taken = d.Current;
+                hand.transform.position = taken.transform.position;
+                yield return null;
+                direct.StartManualInteraction((UnityEngine.XR.Interaction.Toolkit.Interactables.IXRSelectInteractable)taken);
+                yield return new WaitForSeconds(0.5f);
+                Assert.IsNull(d.Current, $"{d.name}: nothing new spawns inside the item still held over the bin");
+                hand.transform.position += new Vector3(0f, 0.3f, -0.2f);       // carried away
+                yield return new WaitForSeconds(0.5f);
+                Assert.IsTrue(d.Current != null && d.Current != taken, $"{d.name}: a new item once the grabbed one has left");
+                direct.EndManualInteraction();
+                yield return null;
+                Object.Destroy(taken.gameObject);
+            }
+            Object.Destroy(hand);
+        }
+
+        // Item 7 of the Quest playtest: a cut visibly splits the fruit, and it still lifts as one object.
+        [UnityTest]
+        public IEnumerator CutPiecesMoveApartButStayOneObject()
+        {
+            var fruit = (Fruit)null;
+            yield return PlaceFruit(f => fruit = f);
+            var stage = fruit.stages[1].transform;
+            float Gap() => Vector3.Distance(Centre(stage.GetChild(0)), Centre(stage.GetChild(1)));
+            float closed = Gap();
+            yield return Push(fruit, 1f, 0.003f);
+            Assert.AreEqual(1, fruit.CutsDone);
+            yield return new WaitForSeconds(0.3f);
+            Assert.Greater(Gap() - closed, 0.006f, "the two halves are visibly apart (> 6 mm)");
+            Assert.AreEqual(1, fruit.GetComponentsInChildren<Rigidbody>().Length, "one body");
+            Assert.IsTrue(stage.GetChild(0).IsChildOf(fruit.transform) && stage.GetChild(1).IsChildOf(fruit.transform), "pieces stay under the fruit");
+        }
+
+        static Vector3 Centre(Transform piece) => piece.GetComponentInChildren<Renderer>().bounds.center;
 
         // ---------- helpers ----------
 

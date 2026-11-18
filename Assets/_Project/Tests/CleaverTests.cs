@@ -11,12 +11,12 @@ using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
 namespace SliceAndSell.Tests
 {
-    // M5 original interaction: the two-handed cleaver chop on a watermelon (GDD > Original interaction).
-    // Two direct interactors hold the cleaver's handle and are moved down through the melon, as two hands would.
+    // The Eto (Thai cleaver): cuts every fruit with one hand, a second hand optional, and is the only tool for the
+    // watermelon. Direct interactors hold its handle and are moved down through the fruit, as hands would.
     public class CleaverTests
     {
         const string ScenePath = "Assets/_Project/Scenes/Stall.unity";
-        CuttingBoard board; Knife cleaver, knife; Dispenser melons;
+        CuttingBoard board; Knife cleaver, knife; Dispenser melons, guavas;
         XRGrabInteractable grab;
         XRDirectInteractor left, right;
         int missed;
@@ -42,7 +42,9 @@ namespace SliceAndSell.Tests
             cleaver = tools.Single(k => k.cleaver);
             knife = tools.Single(k => !k.cleaver);
             grab = cleaver.GetComponent<XRGrabInteractable>();
-            melons = Object.FindObjectsByType<Dispenser>(FindObjectsSortMode.None).Single(d => d.prefab.GetComponent<Fruit>() && d.prefab.GetComponent<Fruit>().needsCleaver);
+            var bins = Object.FindObjectsByType<Dispenser>(FindObjectsSortMode.None).Where(d => d.prefab.GetComponent<Fruit>()).ToArray();
+            melons = bins.Single(d => d.prefab.GetComponent<Fruit>().needsCleaver);
+            guavas = bins.Single(d => d.prefab.GetComponent<Fruit>().fruitName == "Guava");
             left = Hand("Left test hand"); right = Hand("Right test hand");
             missed = 0;
             GameEvents.CutMissed += OnMissed;
@@ -56,10 +58,10 @@ namespace SliceAndSell.Tests
         }
 
         [Test]
-        public void CleaverNeedsTwoHandsAndTheMelonNeedsTheCleaver()
+        public void EtoNeedsOneHandAndTheMelonNeedsTheEto()
         {
-            Assert.AreEqual(InteractableSelectMode.Multiple, grab.selectMode, "both hands can hold it");
-            Assert.AreEqual(2, cleaver.handsRequired);
+            Assert.AreEqual(InteractableSelectMode.Multiple, grab.selectMode, "a second hand can steady it");
+            Assert.AreEqual(1, cleaver.handsRequired);
             Assert.IsTrue(melons.prefab.GetComponent<Fruit>().needsCleaver);
             Assert.AreEqual("Watermelon", melons.prefab.GetComponent<Fruit>().fruitName);
         }
@@ -93,17 +95,26 @@ namespace SliceAndSell.Tests
         }
 
         [UnityTest]
-        public IEnumerator OneHandLetGoMidChopCutsNothing()
+        public IEnumerator OneHandedChopCutsTheMelon()
         {
             var melon = (Fruit)null;
             yield return PlaceMelon(f => melon = f);
-            yield return HoldWith(left, right);
-            right.EndManualInteraction();
-            yield return null;
-            Assert.AreEqual(1, grab.interactorsSelecting.Count, "one hand still holds it");
+            yield return HoldWith(left);
+            Assert.AreEqual(1, grab.interactorsSelecting.Count, "held by one hand");
             yield return Chop(melon, metresPerFrame: 0.003f, hands: new[] { left });
-            Assert.AreEqual(0, melon.CutsDone, "one hand is not enough");
-            Assert.GreaterOrEqual(missed, 1, "the failed chop thunks");
+            Assert.AreEqual(1, melon.CutsDone, "one hand is enough for the Eto");
+            Release(left);
+        }
+
+        [UnityTest]
+        public IEnumerator EtoCutsAGuavaToo()
+        {
+            var guava = (Fruit)null;
+            yield return Place(guavas, f => guava = f);
+            yield return HoldWith(left);
+            yield return Chop(guava, metresPerFrame: 0.003f, hands: new[] { left });
+            Assert.AreEqual(1, guava.CutsDone, "the Eto cuts small fruit as well");
+            Assert.AreEqual(0, missed, "no thunk");
             Release(left);
         }
 
@@ -128,31 +139,37 @@ namespace SliceAndSell.Tests
 
         // ---------- helpers ----------
 
-        IEnumerator PlaceMelon(System.Action<Fruit> got)
+        IEnumerator PlaceMelon(System.Action<Fruit> got) => Place(melons, got);
+
+        IEnumerator Place(Dispenser bin, System.Action<Fruit> got)
         {
-            var melon = melons.Current.GetComponent<Fruit>();
+            var melon = bin.Current.GetComponent<Fruit>();
             var rb = melon.GetComponent<Rigidbody>();
             var pos = board.fruitSocket.transform.position + Vector3.up * 0.02f;
             rb.position = pos; melon.transform.position = pos; rb.linearVelocity = Vector3.zero;
             for (int i = 0; i < 10; i++) yield return new WaitForFixedUpdate();
             yield return null;
-            Assert.AreSame(melon, board.Fruit, "the melon snapped into the board socket");
+            Assert.AreSame(melon, board.Fruit, "the fruit snapped into the board socket");
             got(melon);
         }
 
-        // Pose the cleaver over the melon, blade on the next guide, then close both hands on the handle where it lies.
+        // Pose the Eto over the fruit on the board, blade on the next guide, then close the hands on the handle where it lies.
         IEnumerator HoldWith(params XRDirectInteractor[] hands)
         {
             var melon = board.Fruit;
             var g = melon.NextGuide;
             var n = melon.transform.TransformDirection(g.normal).normalized;
+            // Kinematic and not interpolated before posing: an interpolated body can pull the pose back on the next
+            // physics step, so the tool would sometimes turn and drift before the hands close (a flaky chop).
+            var rb = cleaver.GetComponent<Rigidbody>();
+            rb.isKinematic = true; rb.interpolation = RigidbodyInterpolation.None;
             cleaver.transform.rotation = Quaternion.LookRotation(Vector3.Cross(n, Vector3.up), Vector3.up);
             var p = melon.transform.TransformPoint(g.point);
             var start = new Vector3(p.x, melon.cutVolume.bounds.max.y + 0.03f, p.z);
             cleaver.transform.position += start - EdgeMid(cleaver);
-            cleaver.GetComponent<Rigidbody>().isKinematic = true;
+            rb.position = cleaver.transform.position; rb.rotation = cleaver.transform.rotation;
             Physics.SyncTransforms();
-            float[] along = { -0.1f, 0.05f };       // two fists along the handle
+            float[] along = { -0.05f, 0.045f };     // one or two fists at the ends of the 11.5 cm handle (a short baseline makes the two-hand aim twitchy)
             for (int i = 0; i < hands.Length; i++)
             {
                 hands[i].transform.SetPositionAndRotation(cleaver.transform.TransformPoint(0, 0, along[i]), cleaver.transform.rotation);

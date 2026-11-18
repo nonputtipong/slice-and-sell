@@ -29,35 +29,35 @@ namespace SliceAndSell.Tests
             Object.Destroy(orders.gameObject);
         }
 
-        // Bag and fruit are children of the OrderManager object, so TearDown removes them too.
-        internal static Bag BagWith(Transform parent, int cuts, bool skewer = false, bool chili = false)
+        // Bowl and fruit are children of the OrderManager object, so TearDown removes them too.
+        internal static Bowl BowlWith(Transform parent, int cuts, bool skewer = false, bool chili = false)
         {
-            var bag = new GameObject("Bag").AddComponent<Bag>();
-            bag.transform.SetParent(parent);
-            if (skewer) bag.AddExtra(ExtraKind.Skewer);
-            if (chili) bag.AddExtra(ExtraKind.Chili);
-            if (cuts < 0) return bag;
+            var bowl = new GameObject("Bowl").AddComponent<Bowl>();
+            bowl.transform.SetParent(parent);
+            if (skewer) bowl.AddExtra(ExtraKind.Skewer);
+            if (chili) bowl.AddExtra(ExtraKind.Chili);
+            if (cuts < 0) return bowl;
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Prefabs/Guava.prefab");
             var fruit = Object.Instantiate(prefab, parent).GetComponent<Fruit>();
             fruit.GetComponent<Rigidbody>().isKinematic = true;
             for (int i = 0; i < cuts; i++) fruit.ApplyCut(false);
-            bag.Fill(fruit);
-            return bag;
+            bowl.Fill(fruit);
+            return bowl;
         }
 
-        Bag BagWith(int cuts) => BagWith(orders.transform, cuts);
+        Bowl BowlWith(int cuts) => BowlWith(orders.transform, cuts);
 
-        int Paid(Bag bag, out DeliveryResult result)
+        int Paid(Bowl bowl, out DeliveryResult result)
         {
             int before = orders.Money;
-            result = orders.Deliver(bag);
+            result = orders.Deliver(bowl);
             return orders.Money - before;
         }
 
         [UnityTest]
         public IEnumerator CorrectOrderPays()
         {
-            Assert.AreEqual(20, Paid(BagWith(2), out var r));
+            Assert.AreEqual(20, Paid(BowlWith(2), out var r));
             Assert.AreEqual(DeliveryResult.Correct, r);
             Assert.IsNull(orders.Current);
             yield break;
@@ -66,29 +66,43 @@ namespace SliceAndSell.Tests
         [UnityTest]
         public IEnumerator WrongCutCountPaysBaseOnly()
         {
-            Assert.AreEqual(20, Paid(BagWith(1), out var r));
+            Assert.AreEqual(20, Paid(BowlWith(1), out var r));
             Assert.AreEqual(DeliveryResult.Wrong, r);
             yield break;
         }
 
         [UnityTest]
-        public IEnumerator EmptyBagIsRefusedAndCustomerWaits()
+        public IEnumerator EmptyBowlIsRefusedAndCustomerWaits()
         {
-            Assert.AreEqual(0, Paid(BagWith(-1), out var r));
+            Assert.AreEqual(0, Paid(BowlWith(-1), out var r));
             Assert.AreEqual(DeliveryResult.Empty, r);
             Assert.IsNotNull(orders.Current);
             yield break;
         }
 
+        // Quest playtest bug: after an empty bowl the card stayed on "It's empty!" for good.
+        [UnityTest]
+        public IEnumerator CardShowsTheOrderAgainAfterAnEmptyBowl()
+        {
+            orders.orderCard = new GameObject("Card").AddComponent<TMPro.TextMeshPro>();
+            orders.orderCard.transform.SetParent(orders.transform);
+            var order = orders.Current;
+            orders.Deliver(BowlWith(-1));
+            Assert.AreEqual("It's empty!", orders.orderCard.text);
+            yield return new WaitForSeconds(OrderManager.RefusedSeconds + 0.2f);
+            Assert.AreEqual(order.CardText, orders.orderCard.text, "the card says what they want again");
+            Assert.AreEqual(DeliveryResult.Correct, orders.Deliver(BowlWith(2)), "and the same order can still be served");
+        }
+
         [UnityTest]
         public IEnumerator BellCallsNextCustomerEarly()
         {
-            orders.Deliver(BagWith(2));
+            orders.Deliver(BowlWith(2));
             Assert.IsNull(orders.Current);
             orders.NextCustomer();
             Assert.IsNotNull(orders.Current);
             Assert.IsFalse(orders.ShiftOver);
-            orders.Deliver(BagWith(2));
+            orders.Deliver(BowlWith(2));
             Assert.IsTrue(orders.ShiftOver);
             yield break;
         }
@@ -97,7 +111,7 @@ namespace SliceAndSell.Tests
         public IEnumerator CleanCutsWhilePreparingEarnBonusAndCombo()
         {
             int before = orders.Money;
-            BagWith(2);                     // two clean cuts
+            BowlWith(2);                     // two clean cuts
             Assert.AreEqual(before + 4, orders.Money);
             Assert.AreEqual(2, orders.Combo);
             yield break;

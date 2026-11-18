@@ -1,6 +1,6 @@
 # Slice & Sell
 
-A stationary VR fruit-stall game for Meta Quest 3: take a customer's order, slice the fruit on the board, bag it with
+A stationary VR fruit-stall game for Meta Quest 3: take a customer's order, slice the fruit on the board, drop it in a bowl with
 its extras and hand it over before their patience runs out. Controllers and hand tracking, switchable at run time.
 
 - Unity 6000.3.27f1, OpenXR 1.18.0, XR Interaction Toolkit 3.6.1, XR Hands 1.9.0 (the Lab 4 worksheet versions)
@@ -13,7 +13,7 @@ its extras and hand it over before their patience runs out. Controllers and hand
 | Asset | Where | Source and licence |
 | --- | --- | --- |
 | Guava, mango, pineapple, watermelon models and cut stages | `Assets/_Project/Models/Fruits/` | Original, made for this project with `Tools/Blender/make_fruits.py` |
-| Food Kit models (cutting board, paper bag, foam food boxes) | `Assets/_Project/ThirdParty/Kenney/FoodKit/` | Food Kit by Kenney (www.kenney.nl), CC0 1.0 |
+| Food Kit models (cutting board, foam food boxes) | `Assets/_Project/ThirdParty/Kenney/FoodKit/` | Food Kit by Kenney (www.kenney.nl), CC0 1.0 |
 | City Kit (Commercial) models (shophouses, awning) | `Assets/_Project/ThirdParty/Kenney/CityKitCommercial/` | City Kit (Commercial) by Kenney (www.kenney.nl), CC0 1.0 |
 | City Kit (Roads) models (road, pavement, street lights) | `Assets/_Project/ThirdParty/Kenney/CityKitRoads/` | City Kit (Roads) by Kenney (www.kenney.nl), CC0 1.0 |
 | Furniture Kit models (potted plants, radio, trash can, cardboard boxes) | `Assets/_Project/ThirdParty/Kenney/FurnitureKit/` | Furniture Kit by Kenney (www.kenney.nl), CC0 1.0 |
@@ -22,9 +22,9 @@ its extras and hand it over before their patience runs out. Controllers and hand
 | Cat | `Assets/_Project/ThirdParty/PolyPizza/cat.glb` | "Cat" by Poly by Google, Poly Pizza (https://poly.pizza, file static.poly.pizza/5d32eb38-9546-4ce4-aa77-bcef9328ee61.glb), Creative Commons Attribution (CC BY). Unmodified mesh, rescaled. |
 | Houseplant | `Assets/_Project/ThirdParty/PolyPizza/houseplant.glb` | "Houseplant" by Quaternius, Poly Pizza, CC0 1.0 |
 | Shiba Inu (soi dog) | `Assets/_Project/ThirdParty/PolyPizza/shiba-inu.glb` | "Shiba Inu" by Quaternius, Poly Pizza, CC0 1.0 |
-| Street props (pushcart, rainbow umbrella, bulb strings, paper lanterns, scale, ice tray, plastic bags, stools, AC units, electricity poles and cables, shop signs, roller shutters, spirit house, baskets, cooler, money bowl, bunting, price sign, service bell, hand-over tray, paring knife) | `Assets/_Project/Models/Street/` | Original, made for this project with `Tools/Blender/make_street_props.py` |
+| Street props (pushcart, rainbow umbrella, bulb strings, paper lanterns, scale, ice tray, plastic bags, stools, AC units, electricity poles and cables, shop signs, roller shutters, spirit house, baskets, cooler, money bowl, bunting, price sign, service bell, hand-over tray, paring knife, Eto cleaver, serving bowl, red chilli) | `Assets/_Project/Models/Street/` | Original, made for this project with `Tools/Blender/make_street_props.py` |
 | Holiday Kit models (string lights, lanterns) | `Assets/_Project/ThirdParty/Kenney/HolidayKit/` | Holiday Kit by Kenney (www.kenney.nl), CC0 1.0 |
-| Stall, knife, cleaver, extras, crates (primitive shapes) | `Assets/_Project/Prefabs/`, `Assets/_Project/Materials/` | Original |
+| Stall, collider shapes for the knife and Eto, skewer, crates (primitive shapes) | `Assets/_Project/Prefabs/`, `Assets/_Project/Materials/` | Original |
 | Impact Sounds | `Assets/_Project/ThirdParty/Kenney/ImpactSounds/` | Kenney (www.kenney.nl), CC0 1.0 |
 | Interface Sounds | `Assets/_Project/ThirdParty/Kenney/InterfaceSounds/` | Kenney (www.kenney.nl), CC0 1.0 |
 | Salaryman Commuter | `Assets/_Project/ThirdParty/Polyfork/salaryman-commuter-4170c1.glb` | Salaryman Commuter by Polyfork (https://polyfork.dev/asset/salaryman-commuter-4170c1), CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Unmodified mesh; used as a customer. |

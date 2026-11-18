@@ -48,6 +48,29 @@ namespace SliceAndSell.Tests
             }
         }
 
+        // Dwell to press reaches every VR button, the service bell and the radio; the setting is on both menus.
+        [UnityTest]
+        public IEnumerator EveryButtonTakesDwell()
+        {
+            yield return LoadStall();
+            var buttons = Object.FindObjectsByType<Button>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                .Where(b => b.GetComponentInParent<Canvas>(true).rootCanvas.renderMode == RenderMode.WorldSpace).ToArray();
+            foreach (var b in buttons)
+            {
+                var d = b.GetComponent<DwellPress>();
+                Assert.IsNotNull(d, $"{Path(b.transform)} has no DwellPress");
+                Assert.IsNotNull(d.fill, $"{Path(b.transform)} has no dwell bar");
+            }
+            foreach (var target in new Component[] { Object.FindAnyObjectByType<ServiceBell>(), Object.FindAnyObjectByType<StreetAudio>().radioSwitch })
+            {
+                var d = target.GetComponent<DwellPress>();
+                Assert.IsNotNull(d, $"{target.name} has no DwellPress");
+                Assert.AreEqual(1, d.onDwell.GetPersistentEventCount(), $"{target.name}: dwell does what a poke does");
+            }
+            Assert.IsNotNull(Object.FindAnyObjectByType<WristMenu>(FindObjectsInactive.Include).dwellLabel, "wrist menu has the dwell toggle");
+            Assert.IsNotNull(Object.FindAnyObjectByType<MainMenu>(FindObjectsInactive.Include).dwellLabel, "shop sign settings have the dwell toggle");
+        }
+
         // Menu text (UGUI in world canvases): cap height >= 8 mm, legible at 0.5 m (GDD size rules).
         [UnityTest]
         public IEnumerator MenuTextIsLegibleAtHalfAMetre()

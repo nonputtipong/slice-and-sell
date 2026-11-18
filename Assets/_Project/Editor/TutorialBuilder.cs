@@ -20,12 +20,12 @@ public static class TutorialBuilder
     static readonly Vector2 CardSize = new Vector2(280f, 120f);     // mm
 
     public static Tutorial Build(Transform stall, OrderManager orders, CuttingBoard board, Knife knife, Dispenser guavaBin,
-                                 Dispenser bagStack, XRSocketInteractor tray)
+                                 Dispenser bowlStack, XRSocketInteractor tray)
     {
         var t = new GameObject("Tutorial").AddComponent<Tutorial>();
         t.transform.SetParent(stall, false);
         t.orders = orders; t.board = board; t.knife = knife.GetComponent<XRGrabInteractable>();
-        t.guavaBin = guavaBin; t.bagStack = bagStack; t.tray = tray;
+        t.guavaBin = guavaBin; t.bowlStack = bowlStack; t.tray = tray;
 
         // One label over the whole card (top-aligned for the intro, so the OK button fits below it).
         var card = UiKit.Panel("Tutorial card", t.transform, CardPos, CardRot, CardSize, UiKit.Wood);

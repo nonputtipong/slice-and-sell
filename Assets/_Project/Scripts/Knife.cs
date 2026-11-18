@@ -11,8 +11,8 @@ namespace SliceAndSell
         public Transform edgeStart, edgeEnd;    // the two ends of the cutting edge
         public CuttingBoard board;
         public float powerCutSpeed = 1.5f;      // m/s, bonus only (GDD: Power Cut)
-        public bool cleaver;                    // the cleaver cuts only big fruit (Fruit.needsCleaver), the knife everything else
-        public int handsRequired = 1;           // cleaver: 2, so letting go with one hand mid-chop cuts nothing
+        public bool cleaver;                    // the Eto (Thai cleaver) cuts every fruit; big fruit (Fruit.needsCleaver) only it cuts
+        public int handsRequired = 1;           // hands that must hold it for a cut (1 for both tools; a second hand is optional)
 
         const int EdgeSamples = 5;
         const float SubStep = 0.01f;
@@ -35,7 +35,7 @@ namespace SliceAndSell
         {
             Vector3 s = edgeStart.position, e = edgeEnd.position;
             var fruit = board ? board.Fruit : null;
-            // Check !fruit first: a destroyed fruit (bagged) and null compare equal, so fruit != tracked misses it.
+            // Check !fruit first: a destroyed fruit (in a bowl) and null compare equal, so fruit != tracked misses it.
             if (!fruit || fruit.IsFullyCut) { tracked = null; tracker = null; }
             else if (fruit != tracked || tracker == null)
             {
@@ -71,8 +71,8 @@ namespace SliceAndSell
 
         void Complete(Fruit fruit, Vector3 point, float speed)
         {
-            // Wrong tool for this fruit, or a two-handed tool held in one hand: a thunk, no cut.
-            if (fruit.needsCleaver != cleaver || (handsRequired > 1 && (!grab || grab.interactorsSelecting.Count < handsRequired)))
+            // The paring knife on a watermelon, or a tool held by fewer hands than it needs: a thunk, no cut.
+            if ((fruit.needsCleaver && !cleaver) || (handsRequired > 1 && (!grab || grab.interactorsSelecting.Count < handsRequired)))
             { GameEvents.RaiseCutMissed(point); return; }
             float angle = fruit.AngleToGuide(BladeNormal);
             if (angle > Fruit.CountAngle) { GameEvents.RaiseCutMissed(point); return; }

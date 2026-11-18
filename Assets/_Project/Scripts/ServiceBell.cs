@@ -15,6 +15,7 @@ namespace SliceAndSell
         void OnEnable() => interactable.selectEntered.AddListener(Ring);
         void OnDisable() => interactable.selectEntered.RemoveListener(Ring);
 
-        void Ring(SelectEnterEventArgs args) => orders.NextCustomer();
+        void Ring(SelectEnterEventArgs args) => Ring();
+        public void Ring() => orders.NextCustomer();     // also DwellPress
     }
 }

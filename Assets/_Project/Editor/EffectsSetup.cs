@@ -46,6 +46,8 @@ public static class EffectsSetup
         var fx = go.AddComponent<StallEffects>();
         fx.juice = ps;
         fx.crunch = Clips(Impact, "impactPunch_medium", 5);
+        fx.slice = Load(Ui, "scratch_001", "scratch_002", "scratch_003", "scratch_004", "scratch_005");   // blade through flesh, pitched up
+        fx.boardKnock = Clips(Impact, "impactWood_light", 5);                                          // and onto the board
         fx.powerLayer = Clips(Impact, "impactPunch_heavy", 5);
         fx.cleanLayer = Clips(Impact, "impactGlass_light", 5);
         fx.missed = Clips(Impact, "impactSoft_medium", 5);
@@ -57,12 +59,12 @@ public static class EffectsSetup
         return fx;
     }
 
-    // item: "fruit", "knife", "bag", "bell", "extra" (GDD > Feedback states: grab sound per material).
+    // item: "fruit", "knife", "bowl", "bell", "extra" (GDD > Feedback states: grab sound per material).
     public static AudioClip[] GrabSounds(string item) => item switch
     {
         "fruit" => Clips(Impact, "impactSoft_medium", 5),
         "knife" => Clips(Impact, "impactMetal_light", 5),
-        "bag" => Clips(Impact, "impactGeneric_light", 5),
+        "bowl" => Clips(Impact, "impactPlate_light", 5),
         "bell" => Clips(Impact, "impactBell_heavy", 5),        // select on the bell = it rings
         "extra" => Clips(Impact, "impactWood_light", 5),
         _ => throw new System.ArgumentException("Unknown item: " + item),
@@ -72,7 +74,7 @@ public static class EffectsSetup
     {
         "fruit" => Clips(Impact, "impactSoft_heavy", 5),
         "knife" => Clips(Impact, "impactMetal_medium", 5),
-        "bag" => Clips(Impact, "footstep_carpet", 5),          // soft papery scuff
+        "bowl" => Clips(Impact, "impactPlate_medium", 5),      // melamine set down on wood
         "bell" => Load(Ui, "click_001", "click_002", "click_003"),   // button coming back up
         "extra" => Clips(Impact, "impactWood_medium", 5),
         _ => throw new System.ArgumentException("Unknown item: " + item),

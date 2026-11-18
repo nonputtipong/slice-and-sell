@@ -796,6 +796,90 @@
       "emissive": []
     },
     {
+      "name": "Cleaver",
+      "file": "Cleaver.glb",
+      "origin": "handle centre (the grip); blade along +Z (z 0.065-0.245), spine up, edge down at y = -0.085; handle z -0.06..0.055, ferrule to 0.07",
+      "budget": 600,
+      "tris": 384,
+      "min": [
+        -0.0155,
+        -0.0855,
+        -0.06
+      ],
+      "max": [
+        0.0155,
+        0.0147,
+        0.2455
+      ],
+      "size": [
+        0.031,
+        0.1002,
+        0.3055
+      ],
+      "materials": [
+        "HandleWood",
+        "MetalSteel",
+        "CleaverSteel",
+        "BladeEdge"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "Chili",
+      "file": "Chili.glb",
+      "origin": "bounding-box centre; lies flat, stem at -Z, tip at +Z curving toward +X",
+      "budget": 600,
+      "tris": 548,
+      "min": [
+        -0.0107,
+        -0.0076,
+        -0.0584
+      ],
+      "max": [
+        0.0107,
+        0.0076,
+        0.0584
+      ],
+      "size": [
+        0.0214,
+        0.0151,
+        0.1168
+      ],
+      "materials": [
+        "ChiliRed",
+        "CalyxGreen",
+        "StemGreen"
+      ],
+      "emissive": []
+    },
+    {
+      "name": "Bowl",
+      "file": "Bowl.glb",
+      "origin": "centre of the base at y = 0; inner floor at y = 0.009",
+      "budget": 600,
+      "tris": 520,
+      "min": [
+        -0.075,
+        0.0,
+        -0.075
+      ],
+      "max": [
+        0.075,
+        0.065,
+        0.075
+      ],
+      "size": [
+        0.15,
+        0.065,
+        0.15
+      ],
+      "materials": [
+        "BowlWhite",
+        "BowlBlue"
+      ],
+      "emissive": []
+    },
+    {
       "name": "PriceSign",
       "file": "PriceSign.glb",
       "origin": "stick bottom; board faces +Z (text on the face at z = 0.010)",

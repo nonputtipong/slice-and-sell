@@ -408,7 +408,7 @@ public static class StreetBuilder
 
     // ---------- placing models ----------
 
-    // A Kenney model as the look of a game object whose own primitive keeps the collider (cutting board, bag).
+    // A Kenney model as the look of a game object whose own primitive keeps the collider (cutting board).
     public static Transform Prop(string kit, string model, Transform parent, Vector3 localPos, float yaw, float scale)
     {
         var t = Model($"{Third}Kenney/{kit}/{model}.glb", parent, localPos, yaw, scale: scale, isStatic: false);

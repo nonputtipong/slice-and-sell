@@ -18,7 +18,7 @@ namespace SliceAndSell.Tests
     {
         const string ScenePath = "Assets/_Project/Scenes/Stall.unity";
         XRInputModalityManager modality;
-        XRGrabInteractable fruit, knife, bag;
+        XRGrabInteractable fruit, knife, bowl;
         XRSimpleInteractable bell;
         CuttingBoard board;
         XRSocketInteractor tray;
@@ -34,14 +34,14 @@ namespace SliceAndSell.Tests
             knife = knifeScript.GetComponent<XRGrabInteractable>();
             var dispensers = Object.FindObjectsByType<Dispenser>(FindObjectsSortMode.None);
             fruit = dispensers.First(d => d.prefab.GetComponent<Fruit>()).Current;
-            bag = dispensers.First(d => d.prefab.GetComponent<Bag>()).Current;
+            bowl = dispensers.First(d => d.prefab.GetComponent<Bowl>()).Current;
             bell = Object.FindAnyObjectByType<ServiceBell>().GetComponent<XRSimpleInteractable>();
             tray = Object.FindAnyObjectByType<HandoffTray>().GetComponent<XRSocketInteractor>();
             knifeScript.GetComponent<Rigidbody>().isKinematic = true;   // no physics drift while the test drives it
             Assert.IsNotNull(modality, "rig has an XRInputModalityManager");
             Assert.IsNotNull(knife, "knife has an XRGrabInteractable");
             Assert.IsNotNull(fruit, "fruit bin has a fruit");
-            Assert.IsNotNull(bag, "bag stack has a bag");
+            Assert.IsNotNull(bowl, "bowl stack has a bowl");
         }
 
         [UnityTest]
@@ -57,7 +57,7 @@ namespace SliceAndSell.Tests
                     .Where(i => !(i is XRPokeInteractor) && !(i is XRSocketInteractor)).ToArray();
                 var pokers = root.GetComponentsInChildren<XRPokeInteractor>(true);
 
-                foreach (var (item, target) in new (string, IXRInteractable)[] { ("fruit", fruit), ("knife", knife), ("bag", bag) })
+                foreach (var (item, target) in new (string, IXRInteractable)[] { ("fruit", fruit), ("knife", knife), ("bowl", bowl) })
                     Assert.IsTrue(grabbers.Any(i => Overlaps(i, target)),
                         $"{name}: no grab interactor shares a layer with the {item} (grab interactors: {Describe(grabbers)})");
                 Assert.IsTrue(pokers.Any(p => Overlaps(p, bell)),
@@ -71,14 +71,14 @@ namespace SliceAndSell.Tests
         {
             var fruitSocket = board.fruitSocket; var scoop = board.scoopSocket;
             Assert.IsFalse(Overlaps(fruitSocket, knife), "fruit socket must not take the knife");
-            Assert.IsFalse(Overlaps(fruitSocket, bag), "fruit socket must not take a bag");
+            Assert.IsFalse(Overlaps(fruitSocket, bowl), "fruit socket must not take a bowl");
             Assert.IsFalse(Overlaps(scoop, fruit), "scoop spot must not take a fruit");
             Assert.IsFalse(Overlaps(tray, fruit), "tray must not take a fruit");
             Assert.IsFalse(Overlaps(scoop, knife), "scoop spot must not take the knife");
             Assert.IsFalse(Overlaps(tray, knife), "tray must not take the knife");
             Assert.IsTrue(Overlaps(fruitSocket, fruit), "fruit socket takes a fruit");
-            Assert.IsTrue(Overlaps(scoop, bag), "scoop spot takes a bag");
-            Assert.IsTrue(Overlaps(tray, bag), "tray takes a bag");
+            Assert.IsTrue(Overlaps(scoop, bowl), "scoop spot takes a bowl");
+            Assert.IsTrue(Overlaps(tray, bowl), "tray takes a bowl");
             yield break;
         }
 

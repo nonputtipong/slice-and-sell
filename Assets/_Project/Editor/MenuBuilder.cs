@@ -71,7 +71,7 @@ namespace SliceAndSell
                 { "Grab", "Grip button", "Pinch, or close your fist" },
                 { "Cut", "Push the blade down along the line", "Push the blade down along the line" },
                 { "Bell", "Poke it (or point + trigger)", "Poke it (or point + pinch)" },
-                { "Cleaver", "Both grips on the handle, chop down", "Both hands on the handle, push down" },
+                { "Eto", "Grip the handle, chop down (cuts any fruit)", "Grab the handle, push down (cuts any fruit)" },
                 { "Menu", "Menu button", "Turn your left palm up" },
             };
             for (int r = 0; r < rows.GetLength(0); r++)
@@ -84,13 +84,14 @@ namespace SliceAndSell
             }
             Back(howTo, menu);
 
-            // Settings: stance toggle, volume - / +.
+            // Settings: stance toggle, volume - / +, dwell to press (accessibility).
             var settings = Page(sign, "Settings", "Settings");
-            menu.stanceLabel = Btn(settings, "Stance: Standing", 0, 70, 360, 70, menu.ToggleStance).GetComponentInChildren<TMP_Text>();
-            Btn(settings, "−", -150, -30, 70, 70, menu.VolumeDown).GetComponentInChildren<TMP_Text>().fontSize = 30;
-            UiKit.Rounded(settings, "Volume pill", new Vector2(0, -30), new Vector2(200, 56), new Color(0f, 0f, 0f, 0.22f), 12f);
-            menu.volumeLabel = UiKit.Label(settings, "Volume 100%", new Vector2(0, -30), new Vector2(200, 50), 22, UiKit.Cream, style: FontStyles.Bold);
-            Btn(settings, "+", 150, -30, 70, 70, menu.VolumeUp).GetComponentInChildren<TMP_Text>().fontSize = 30;
+            menu.stanceLabel = Btn(settings, "Stance: Standing", 0, 90, 360, 70, menu.ToggleStance).GetComponentInChildren<TMP_Text>();
+            Btn(settings, "−", -150, 0, 70, 70, menu.VolumeDown).GetComponentInChildren<TMP_Text>().fontSize = 30;
+            UiKit.Rounded(settings, "Volume pill", new Vector2(0, 0), new Vector2(200, 56), new Color(0f, 0f, 0f, 0.22f), 12f);
+            menu.volumeLabel = UiKit.Label(settings, "Volume 100%", new Vector2(0, 0), new Vector2(200, 50), 22, UiKit.Cream, style: FontStyles.Bold);
+            Btn(settings, "+", 150, 0, 70, 70, menu.VolumeUp).GetComponentInChildren<TMP_Text>().fontSize = 30;
+            menu.dwellLabel = Btn(settings, "Dwell to press: Off", 0, -85, 360, 60, menu.ToggleDwell).GetComponentInChildren<TMP_Text>();
             Back(settings, menu);
 
             menu.mainPage = main.gameObject; menu.levelsPage = levels.gameObject;

@@ -31,7 +31,7 @@ namespace SliceAndSell
         public Customer[] customerPrefabs;
         public Transform customerEntry, counterSpot, customerExit;
         public Transform queueSpot;         // where the next customer waits in a queue level
-        public Transform cashBox;           // coins clink here (GDD > Spatial audio); the bag's position if unset
+        public Transform cashBox;           // coins clink here (GDD > Spatial audio); the bowl's position if unset
 
         [Header("M1 greybox mode")]
         public List<Order> orders = new List<Order>();
@@ -179,19 +179,26 @@ namespace SliceAndSell
             UpdateBoard();
         }
 
-        public DeliveryResult Deliver(Bag bag)
+        public DeliveryResult Deliver(Bowl bowl)
         {
             if (!waiting) return DeliveryResult.NoCustomer;
-            if (!bag.IsFilled) { Show("It's empty!"); GameEvents.RaiseRefused(bag.transform.position); return DeliveryResult.Empty; }
+            if (!bowl.IsFilled)
+            {
+                Show("It's empty!");
+                GameEvents.RaiseRefused(bowl.transform.position);
+                Invoke(nameof(ShowOrder), RefusedSeconds);      // then the card says what they want again
+                return DeliveryResult.Empty;
+            }
 
+            CancelInvoke(nameof(ShowOrder));
             var order = orders[index];
-            bool correct = bag.Contents == order.fruit && bag.Cuts == order.cuts
-                           && (!order.skewer || bag.HasSkewer) && (!order.chili || bag.HasChili);
+            bool correct = bowl.Contents == order.fruit && bowl.Cuts == order.cuts
+                           && (!order.skewer || bowl.HasSkewer) && (!order.chili || bowl.HasChili);
             bool tipsOn = Level && Level.patienceSeconds > 0f;
             var (amount, tip) = scoring.OnServed(order.price, correct, tipsOn, Patience01);
             Served++;
             waiting = false;
-            GameEvents.RaisePaid(cashBox ? cashBox.position : bag.transform.position, amount, tip, correct);
+            GameEvents.RaisePaid(cashBox ? cashBox.position : bowl.transform.position, amount, tip, correct);
             Dismiss(correct ? CustomerMood.Happy : CustomerMood.Angry);
 
             bool lastFixed = index + 1 >= orders.Count && (!Level || Level.customers > 0);
@@ -202,6 +209,15 @@ namespace SliceAndSell
                 if (!lastFixed) Invoke(nameof(NextCustomer), NextDelay);
             }
             return correct ? DeliveryResult.Correct : DeliveryResult.Wrong;
+        }
+
+        // How long "It's empty!" stays on the card before the order shows again.
+        public const float RefusedSeconds = 1.5f;
+
+        // Only while that customer still waits: if they left (or the shift moved on) the card already says so.
+        void ShowOrder()
+        {
+            if (waiting) Show(orders[index].CardText);
         }
 
         void WalkOut()

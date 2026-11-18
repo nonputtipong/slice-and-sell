@@ -48,7 +48,8 @@ namespace SliceAndSell
             GameEvents.Refused -= OnUnhappy;
         }
 
-        void ToggleRadio(SelectEnterEventArgs _) { if (radio.isPlaying) radio.Pause(); else radio.UnPause(); }
+        void ToggleRadio(SelectEnterEventArgs _) => ToggleRadio();
+        public void ToggleRadio() { if (radio.isPlaying) radio.Pause(); else radio.UnPause(); }     // also DwellPress
 
         void Update()
         {

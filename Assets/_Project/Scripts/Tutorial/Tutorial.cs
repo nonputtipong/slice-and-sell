@@ -9,13 +9,13 @@ namespace SliceAndSell
     // Level 1 tutorial (GDD > Level 1 tutorial flow). Intro card with an OK button; then customer 1 gets every step
     // with a glow, a bobbing arrow and a text card, customer 2 the text only, customer 3 nothing.
     // Steps are read from the game's own state each frame (no hooks in the game scripts). Each waits for its action,
-    // so nobody can fail; a step also counts when the player is already ahead of it (e.g. the bag went on the spot early).
+    // so nobody can fail; a step also counts when the player is already ahead of it (e.g. the bowl was filled early).
     public class Tutorial : MonoBehaviour
     {
         public OrderManager orders;
         public CuttingBoard board;
         public XRGrabInteractable knife;
-        public Dispenser guavaBin, bagStack;
+        public Dispenser guavaBin, bowlStack;
         public XRSocketInteractor tray;
         public GameObject card, okButton;
         public TMP_Text text;
@@ -27,7 +27,7 @@ namespace SliceAndSell
 
         const string Intro = "<b>Welcome to your fruit stall!</b>\nGrab with grip, or pinch with your hand.";
 
-        // Logged as steps 1..8 (the intro is step 0). Controller wording first, then hands.
+        // Logged as steps 1..7 (the intro is step 0). Controller wording first, then hands.
         static readonly string[] Steps =
         {
             "<b>Grab a guava from the crate</b>\nGrip, or pinch/grab it with your hand",
@@ -35,9 +35,8 @@ namespace SliceAndSell
             "<b>Pick up the knife</b>\nGrip, or grab the handle with your hand",
             "<b>Cut along the line (1 of 2)</b>\nPush the blade slowly down through the line",
             "<b>Cut along the new line (2 of 2)</b>\nPush the blade slowly down through the line",
-            "<b>Take a paper bag</b>\nGrip, or pinch/grab it with your hand",
-            "<b>Put the bag on the yellow spot</b>\nThe slices drop in",
-            "<b>Hand it over</b>\nPut the bag on the orange tray",
+            "<b>Put it in a bowl</b>\nLift the cut guava and let go over a bowl",
+            "<b>Hand it over</b>\nPut the bowl on the orange tray",
         };
 
         static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
@@ -48,10 +47,13 @@ namespace SliceAndSell
         float elapsed;
         bool intro;
         int customer, step;
-        XRBaseInteractable guava, bag;      // the last item seen waiting in the bin / on the stack
-        Bag scoopBag;                       // the last bag seen on the scoop spot
+        XRBaseInteractable guava;           // the last item seen waiting in the bin
+        Fruit cutFruit;                     // the last fully cut fruit seen on the board (may be in the player's hand now)
+        bool bowled;                        // a bowl was filled for this customer (BowlMouth or the scoop spot)
 
-        bool Bagged => scoopBag && scoopBag.IsFilled;
+        void OnEnable() => GameEvents.AddedToBowl += OnAddedToBowl;
+        void OnDisable() => GameEvents.AddedToBowl -= OnAddedToBowl;
+        void OnAddedToBowl(Vector3 _, string what) { if (what != nameof(ExtraKind.Skewer) && what != nameof(ExtraKind.Chili)) bowled = true; }
 
         void Awake()
         {
@@ -68,17 +70,16 @@ namespace SliceAndSell
             elapsed += Time.deltaTime;
 
             if (guavaBin.Current) guava = guavaBin.Current;
-            if (bagStack.Current) bag = bagStack.Current;
-            var onSpot = board.scoopSocket.hasSelection ? board.scoopSocket.firstInteractableSelected.transform.GetComponent<Bag>() : null;
-            if (onSpot) scoopBag = onSpot;
+            if (board.Fruit && board.Fruit.IsFullyCut) cutFruit = board.Fruit;
 
             if (intro && Done(0)) Ok();     // already grabbing: the intro has done its job
             if (!intro)
             {
                 while (step < Steps.Length && Done(step)) Complete();
                 if (orders.Served > customer) NextCustomer();
-                // The fruit left the board before it was bagged (taken off, or dropped and despawned): start again from the crate.
-                else if (step >= 2 && step <= 6 && !board.Fruit && !Bagged) step = 0;
+                // The fruit is gone before it reached a bowl (taken off uncut, or dropped and despawned): start again from
+                // the crate. A cut fruit in the player's hand on its way to a bowl is still there.
+                else if (step >= 2 && step <= 5 && !board.Fruit && !cutFruit && !bowled) step = 0;
             }
             Show();
         }
@@ -88,17 +89,16 @@ namespace SliceAndSell
         {
             if (orders.Served > customer) return true;
             var fruit = board.Fruit;
-            bool onBoard = fruit || Bagged;
+            bool onBoard = fruit || cutFruit || bowled;
             switch (s)
             {
                 case 0: return (guava && guava.isSelected) || onBoard;
                 case 1: return onBoard;
-                case 2: return knife.isSelected || (fruit && fruit.CutsDone >= 1) || Bagged;
-                case 3: return (fruit && fruit.CutsDone >= 1) || Bagged;
-                case 4: return (fruit && fruit.IsFullyCut) || Bagged;
-                case 5: return (bag && bag.isSelected) || board.scoopSocket.hasSelection || Bagged;
-                case 6: return Bagged;
-                default: return false;      // 7: handed over (Served, above)
+                case 2: return knife.isSelected || (fruit && fruit.CutsDone >= 1) || cutFruit || bowled;
+                case 3: return (fruit && fruit.CutsDone >= 1) || cutFruit || bowled;
+                case 4: return cutFruit || bowled;
+                case 5: return bowled;
+                default: return false;      // 6: handed over (Served, above)
             }
         }
 
@@ -115,7 +115,7 @@ namespace SliceAndSell
             Active = true; intro = true;
             elapsed = 0f; OnboardingSeconds = 0f;
             customer = orders.Served; step = 0;
-            guava = bag = null; scoopBag = null;
+            guava = null; cutFruit = null; bowled = false;
         }
 
         void End()
@@ -138,7 +138,7 @@ namespace SliceAndSell
         void NextCustomer()
         {
             customer = orders.Served; step = 0;
-            guava = bag = null; scoopBag = null;
+            guava = null; cutFruit = null; bowled = false;
         }
 
         void Show()
@@ -171,8 +171,7 @@ namespace SliceAndSell
                 case 1: return board.fruitSocket;
                 case 2: return knife;
                 case 3: case 4: return board.Fruit ? board.Fruit : board.fruitSocket;
-                case 5: return bagStack.Current ? bagStack.Current : bagStack.spawnPoint;
-                case 6: return board.scoopSocket;
+                case 5: return bowlStack.Current ? bowlStack.Current : bowlStack.spawnPoint;
                 default: return tray;
             }
         }

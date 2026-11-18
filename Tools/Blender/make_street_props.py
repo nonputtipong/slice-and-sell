@@ -57,7 +57,10 @@ PAL = {
     "CoolerMetal": "#9DAFB3", "Rust": "#8C5634",
     "BowlPurple": "#8E52C8", "NotePink": "#E9A3BE", "NoteGreen": "#93C99C", "NoteBlue": "#8DB6E2",
     "CoinSilver": "#C8CCD0", "TrayOrange": "#F08A2A", "BladeEdge": "#E6EBEF",
+    "CleaverSteel": "#6C7378", "HandleWood": "#8A5532", "ChiliRed": "#B5141C", "CalyxGreen": "#4F7D2B",
+    "StemGreen": "#7C9A45", "BowlWhite": "#F3F0E6", "BowlBlue": "#2F68B8",
 }
+GLOSSY = {"CleaverSteel", "ChiliRed", "BowlWhite", "BowlBlue"}  # roughness 0.35 instead of 0.7
 
 
 def make_material(name):
@@ -66,7 +69,7 @@ def make_material(name):
     bsdf = m.node_tree.nodes["Principled BSDF"]
     col = lin(PAL[name])
     bsdf.inputs["Base Color"].default_value = col
-    bsdf.inputs["Roughness"].default_value = 0.7
+    bsdf.inputs["Roughness"].default_value = 0.35 if name in GLOSSY else 0.7
     if name.endswith("Glow"):
         bsdf.inputs["Emission Color"].default_value = col
         bsdf.inputs["Emission Strength"].default_value = 1.0
@@ -198,6 +201,34 @@ class Part:
         faces += [(j, (j + 1) % n, n + (j + 1) % n, n + j) for j in range(n)]
         cm = cap_mat or mat
         self.mesh(pts, faces, lambda k: cm if k < 2 else mat)
+
+    def loft(self, rings, mat):
+        """Join consecutive rings (lists of n points, same winding); a single point is a pole.
+        End rings that are lists get flat caps."""
+        pts, idx = [], []
+        for r in rings:
+            if isinstance(r, Vector):
+                idx.append(len(pts))
+                pts.append(r)
+            else:
+                idx.append(list(range(len(pts), len(pts) + len(r))))
+                pts += list(r)
+        faces = []
+        for a, b in zip(idx, idx[1:]):
+            n = len(b) if isinstance(a, int) else len(a)
+            for j in range(n):
+                j1 = (j + 1) % n
+                if isinstance(a, int):
+                    faces.append((a, b[j1], b[j]))
+                elif isinstance(b, int):
+                    faces.append((a[j], a[j1], b))
+                else:
+                    faces.append((a[j], a[j1], b[j1], b[j]))
+        if not isinstance(idx[0], int):
+            faces.append(tuple(idx[0])[::-1])
+        if not isinstance(idx[-1], int):
+            faces.append(tuple(idx[-1]))
+        self.mesh(pts, faces, mat)
 
     def finish(self):
         bm = self.bm
@@ -766,6 +797,82 @@ def knife():
     return p
 
 
+def cleaver():
+    """Thai eto (one-handed chopping cleaver) along +Z like Knife: origin at the handle centre (the grip), round wood
+    handle z -0.06..0.055, steel ferrule to 0.07, blade z 0.065..0.245 that deepens toward the squared, angled front;
+    spine up (y 0.008..0.014), edge down at y = -0.085 (the cut markers). Blade tapers from 4 mm at the spine."""
+    p = Part("Cleaver")
+    p.lathe([(0, -0.06), (0.0125, -0.06), (0.0152, -0.055), (0.0155, -0.035), (0.015, 0.0), (0.0142, 0.035),
+             (0.0136, 0.055), (0, 0.055)], 10, "HandleWood", axis=V(0, 0, 1), phase=0.5)
+    p.lathe([(0, 0.053), (0.0148, 0.053), (0.0152, 0.056), (0.0152, 0.067), (0.0135, 0.07), (0, 0.07)], 10,
+            "MetalSteel", axis=V(0, 0, 1), phase=0.5)
+    # (z, spine y, edge y): rounded heel out of the ferrule, belly deepest past the middle, front slants down
+    # from the spine to a rounded bottom-front corner
+    st = [(0.065, 0.006, -0.012), (0.071, 0.008, -0.055), (0.078, 0.0082, -0.0775), (0.088, 0.0088, -0.0832),
+          (0.11, 0.0098, -0.0846), (0.14, 0.011, -0.0852), (0.17, 0.0122, -0.0855), (0.20, 0.0132, -0.0855),
+          (0.222, 0.0138, -0.0848), (0.229, 0.0138, -0.0838), (0.236, -0.012, -0.0822), (0.2415, -0.040, -0.0795),
+          (0.2455, -0.064, -0.0745)]
+    bev = 0.008  # bright bevel height above the edge
+
+    def ring(z, yt, yb, wt, wb):
+        return [V(-wb, yb, z), V(wb, yb, z), V(wt, yt, z), V(-wt, yt, z)]
+    p.loft([ring(z, yt, yb + bev - 0.001 if z > 0.07 else yb, 0.002, 0.0013) for z, yt, yb in st],
+           "CleaverSteel")
+    p.loft([ring(z, yb + bev, yb, 0.00145, 0.0004) for z, yt, yb in st[2:]], "BladeEdge")
+    return p
+
+
+def chili():
+    """Thai long red chilli (prik chee fa) lying on the counter: 9 cm glossy body with 3 shallow lobes tapering to a
+    point that curves toward +X, green 5-pointed calyx cupping the shoulder, 2.2 cm bent green stem at -Z.
+    Origin at the bounding-box centre."""
+    p = Part("Chili")
+    L, n, R = 0.09, 12, 0.0071
+
+    def c(t):                                            # centreline, t 0 shoulder .. 1 tip, curve in XZ
+        return V(0.014 * max(t, 0) ** 2.2, 0, L * t)
+
+    def rad(t):
+        if t < 0.12:
+            return R * (0.62 + 0.38 * math.sin(t / 0.12 * math.pi / 2))
+        return R * (1 - ((t - 0.12) / 0.88) ** 1.6) ** 0.85
+
+    def body_ring(t, rr):
+        d = (c(t + 1e-3) - c(t - 1e-3)).normalized()
+        side = V(0, 1, 0).cross(d).normalized()
+        lob = 0.08 * (1 - t)
+        return [c(t) + (side * math.cos(a) + V(0, 1, 0) * math.sin(a)) * rr * (1 + lob * math.cos(3 * a + 0.5))
+                for a in (2 * math.pi * j / n for j in range(n))]
+    ts = [0.0, 0.03, 0.07, 0.12, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.88, 0.94]
+    p.loft([V(0, 0, -0.0025)] + [body_ring(t, rad(t)) for t in ts] + [c(1.0)], "ChiliRed")
+    # calyx: shell over the shoulder, 5 sepal points reaching forward; inner side buried in the body
+    m = 15
+    def cal(h, r):
+        return [V(r * math.cos(2 * math.pi * j / m), r * math.sin(2 * math.pi * j / m), h(j)) for j in range(m)]
+    rim = lambda j: 0.0035 + 0.0045 * max(0.0, math.cos(2 * math.pi * 5 * j / m)) ** 2
+    p.loft([V(0, 0, -0.0055), cal(lambda j: -0.0045, 0.0032), cal(lambda j: -0.0022, 0.0055),
+            cal(lambda j: 0.0006, 0.0066), cal(lambda j: rim(j) * 0.55, 0.0072), cal(rim, 0.0076),
+            cal(rim, 0.006), V(0, 0, 0.001)], "CalyxGreen")
+    p.tube([V(0, 0, -0.004), V(0, 0, -0.009), V(-0.0006, 0, -0.015), V(-0.0022, 0.0, -0.021),
+            V(-0.0048, 0, -0.026)], 0.0017, 6, "StemGreen", phase=0.5)
+    vs = p.bm.verts
+    mid = [(min(v.co[i] for v in vs) + max(v.co[i] for v in vs)) / 2 for i in range(3)]
+    for v in vs:
+        v.co -= Vector(mid)
+    return p
+
+
+def bowl():
+    """Street-food serving bowl (melamine): off-white, blue band below a blue rim, Ø 15 cm, 6.5 cm tall, foot ring
+    r 0.039-0.043, wall ~4.5 mm, inner floor at y = 0.009. Replaces the paper bag handed to the customer."""
+    p = Part("Bowl")
+    prof = [(0, 0.003), (0.037, 0.003), (0.039, 0), (0.043, 0), (0.046, 0.007), (0.062, 0.024), (0.071, 0.045),
+            (0.0735, 0.052), (0.0746, 0.0585), (0.075, 0.065), (0.0705, 0.065), (0.066, 0.045), (0.052, 0.019),
+            (0.036, 0.0095), (0, 0.009)]
+    p.lathe(prof, 20, lambda i, j: "BowlBlue" if i in (7, 9) else "BowlWhite")
+    return p
+
+
 # name -> builder, tri budget, origin note, expected Unity bounds (axis: (min, max), None = unchecked)
 BASE = "centre of the base at y = 0"
 PROPS = [
@@ -806,6 +913,11 @@ PROPS = [
      {"y": (0, 0.025), "x": (-0.11, 0.11), "z": (-0.09, 0.09)}),
     ("Knife", knife, SMALL, "handle centre (the grip); blade along +Z, edge down at y = -0.015",
      {"z": (-0.051, 0.176), "y": (-0.0153, 0.0128)}),
+    ("Cleaver", cleaver, SMALL, "handle centre (the grip); blade along +Z (z 0.065-0.245), spine up, edge down at "
+     "y = -0.085; handle z -0.06..0.055, ferrule to 0.07", {"z": (-0.06, 0.2455), "y": (-0.0855, 0.0155)}),
+    ("Chili", chili, SMALL, "bounding-box centre; lies flat, stem at -Z, tip at +Z curving toward +X",
+     {"z": (-0.058, 0.058)}),
+    ("Bowl", bowl, SMALL, BASE + "; inner floor at y = 0.009", {"y": (0, 0.065), "x": (-0.075, 0.075)}),
     ("PriceSign", price_sign, SMALL, "stick bottom; board faces +Z (text on the face at z = 0.010)",
      {"y": (0, 0.255)}),
 ]

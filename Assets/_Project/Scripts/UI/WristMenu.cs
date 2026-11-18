@@ -15,12 +15,12 @@ namespace SliceAndSell
     public class WristMenu : MonoBehaviour
     {
         public Transform panel;                         // the UiKit canvas, a child of this object
-        public TMP_Text pauseLabel, stanceLabel, volumeLabel;
+        public TMP_Text pauseLabel, stanceLabel, volumeLabel, dwellLabel;
         public OrderManager orders;
         public Transform origin, head;                  // XR Origin root and its camera
         public GameObject leftController;               // XRInputModalityManager.leftController
         [Range(0f, 1f)] public float facing = 0.55f;    // how much the inside of the wrist must face you (1 = exactly)
-        public float above = 0.16f;                     // panel centre above the wrist (m); the panel is 26 cm tall
+        public float above = 0.19f;                     // panel centre above the wrist (m); the panel is 32 cm tall
         public UnityEvent onExitToMenu = new UnityEvent();
 
         bool pinned, open;
@@ -91,12 +91,14 @@ namespace SliceAndSell
             if (pauseLabel) pauseLabel.text = GamePause.Paused ? "Resume" : "Pause";
             if (stanceLabel) stanceLabel.text = GameSettings.Seated ? "Seated" : "Standing";
             if (volumeLabel) volumeLabel.text = $"Volume\n{Mathf.RoundToInt(GameSettings.Volume * 100f)}%";
+            if (dwellLabel) dwellLabel.text = "Dwell to press: " + (GameSettings.Dwell ? "On" : "Off");
         }
 
         // Buttons (persistent listeners set by WristMenuBuilder).
         public void TogglePause() => GamePause.Toggle();
         public void Restart() => orders.Retry();                // StartLevel also unpauses
         public void ToggleSeated() => GameSettings.ToggleSeated();
+        public void ToggleDwell() => GameSettings.ToggleDwell();
         public void VolumeDown() => GameSettings.VolumeDown();
         public void VolumeUp() => GameSettings.VolumeUp();
 

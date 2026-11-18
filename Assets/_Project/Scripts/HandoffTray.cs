@@ -4,7 +4,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
 namespace SliceAndSell
 {
-    // A bag placed on the tray is handed to the customer. Bags are endless, so the tray consumes it.
+    // A bowl placed on the tray is handed to the customer. Bowls are endless, so the tray consumes it.
     [RequireComponent(typeof(XRSocketInteractor))]
     public class HandoffTray : MonoBehaviour
     {
@@ -17,8 +17,8 @@ namespace SliceAndSell
 
         void OnPlaced(SelectEnterEventArgs args)
         {
-            var bag = args.interactableObject.transform.GetComponent<Bag>();
-            if (bag && orders.Deliver(bag) != DeliveryResult.NoCustomer) Destroy(bag.gameObject, 0.5f);
+            var bowl = args.interactableObject.transform.GetComponent<Bowl>();
+            if (bowl && orders.Deliver(bowl) != DeliveryResult.NoCustomer) Destroy(bowl.gameObject, 0.5f);
         }
     }
 }

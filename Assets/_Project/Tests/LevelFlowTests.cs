@@ -40,7 +40,7 @@ namespace SliceAndSell.Tests
             Object.Destroy(l1); Object.Destroy(l2);
         }
 
-        Bag Bag(int cuts, bool skewer = false, bool chili = false) => OrderTests.BagWith(orders.transform, cuts, skewer, chili);
+        Bowl Bowl(int cuts, bool skewer = false, bool chili = false) => OrderTests.BowlWith(orders.transform, cuts, skewer, chili);
 
         IEnumerator UntilCustomer(float timeout = 2f)
         {
@@ -77,7 +77,7 @@ namespace SliceAndSell.Tests
             for (int i = 0; i < 3; i++)
             {
                 yield return UntilCustomer();
-                Assert.AreEqual(DeliveryResult.Correct, orders.Deliver(Bag(2)));
+                Assert.AreEqual(DeliveryResult.Correct, orders.Deliver(Bowl(2)));
             }
             Assert.IsTrue(orders.ShiftOver);
             Assert.IsTrue(orders.ShiftWon, $"won with THB {orders.Money}");
@@ -94,9 +94,9 @@ namespace SliceAndSell.Tests
             yield return Begin(l1, l2);
             yield return UntilCustomer();
             yield return new WaitForSeconds(0.3f);
-            var bag = Bag(2);               // cut first: its clean-cut bonus is not what this test measures
+            var bowl = Bowl(2);               // cut first: its clean-cut bonus is not what this test measures
             int before = orders.Money;
-            orders.Deliver(bag);
+            orders.Deliver(bowl);
             Assert.AreEqual(20, orders.Money - before, "base price only, no tip while patience is paused");
             Assert.IsFalse(orders.ShiftOver);
         }
@@ -140,9 +140,9 @@ namespace SliceAndSell.Tests
         {
             yield return Begin(Level("Tips", 0f, 0, 400, 30f));
             yield return UntilCustomer();
-            var bag = Bag(2);
+            var bowl = Bowl(2);
             int before = orders.Money;
-            orders.Deliver(bag);
+            orders.Deliver(bowl);
             Assert.AreEqual(20 + 5, orders.Money - before);
         }
 
@@ -152,16 +152,16 @@ namespace SliceAndSell.Tests
             yield return Begin(l2);
             yield return UntilCustomer();
             Assert.IsTrue(orders.Current.skewer);
-            Assert.AreEqual(DeliveryResult.Wrong, orders.Deliver(Bag(2)), "no skewer");
+            Assert.AreEqual(DeliveryResult.Wrong, orders.Deliver(Bowl(2)), "no skewer");
             yield return UntilCustomer();
-            Assert.AreEqual(DeliveryResult.Correct, orders.Deliver(Bag(2, skewer: true)));
+            Assert.AreEqual(DeliveryResult.Correct, orders.Deliver(Bowl(2, skewer: true)));
         }
 
         [UnityTest]
         public IEnumerator ContinuousShiftKeepsSendingCustomers()
         {
             yield return Begin(Level("Rush", 0f, 0, 400, 30f));
-            for (int i = 0; i < 5; i++) { yield return UntilCustomer(); orders.Deliver(Bag(2)); }
+            for (int i = 0; i < 5; i++) { yield return UntilCustomer(); orders.Deliver(Bowl(2)); }
             Assert.AreEqual(5, orders.Served);
             Assert.IsFalse(orders.ShiftOver);
         }
@@ -202,7 +202,7 @@ namespace SliceAndSell.Tests
             for (float t = 0; (second.transform.position - orders.queueSpot.position).sqrMagnitude > 1e-4f && t < 8f; t += Time.deltaTime) yield return null;
             Assert.Less(Vector3.Distance(second.transform.position, orders.queueSpot.position), 0.01f, "they stand at the queue spot");
 
-            orders.Deliver(Bag(2));
+            orders.Deliver(Bowl(2));
             yield return UntilCustomer(8f);
             Assert.Less(Vector3.Distance(second.transform.position, orders.counterSpot.position), 0.01f, "the one in line stepped up to the counter");
             Assert.IsNotNull(orders.Queued, "and a new one joined the line");

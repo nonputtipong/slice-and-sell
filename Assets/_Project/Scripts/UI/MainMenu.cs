@@ -12,7 +12,7 @@ namespace SliceAndSell
 
         public OrderManager orders;
         public GameObject sign, mainPage, levelsPage, howToPage, settingsPage;
-        public TMP_Text startLabel, stanceLabel, volumeLabel;
+        public TMP_Text startLabel, stanceLabel, volumeLabel, dwellLabel;
         public Button[] levelButtons;
         public Image[] levelStars;          // 3 per level button
 
@@ -38,6 +38,7 @@ namespace SliceAndSell
         }
 
         public void ToggleStance() => GameSettings.ToggleSeated();
+        public void ToggleDwell() => GameSettings.ToggleDwell();
         public void VolumeUp() => GameSettings.VolumeUp();
         public void VolumeDown() => GameSettings.VolumeDown();
 
@@ -75,6 +76,7 @@ namespace SliceAndSell
             }
             stanceLabel.text = "Stance: " + (GameSettings.Seated ? "Seated" : "Standing");
             volumeLabel.text = $"Volume {Mathf.RoundToInt(GameSettings.Volume * 100)}%";
+            if (dwellLabel) dwellLabel.text = "Dwell to press: " + (GameSettings.Dwell ? "On" : "Off");
         }
     }
 }

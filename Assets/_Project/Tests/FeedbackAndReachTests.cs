@@ -140,10 +140,10 @@ namespace SliceAndSell.Tests
             socketGo.AddComponent<SocketFeedback>().targets = new Renderer[] { tray };
             socketGo.SetActive(true);
 
-            var bag = Make("Bag"); bag.transform.position = Vector3.one * 5f;   // far from the trigger: no auto snap
-            bag.AddComponent<BoxCollider>();
-            bag.AddComponent<Rigidbody>().useGravity = false;
-            var grab = bag.AddComponent<XRGrabInteractable>();
+            var bowl = Make("Bowl"); bowl.transform.position = Vector3.one * 5f;   // far from the trigger: no auto snap
+            bowl.AddComponent<BoxCollider>();
+            bowl.AddComponent<Rigidbody>().useGravity = false;
+            var grab = bowl.AddComponent<XRGrabInteractable>();
             grab.interactionManager = manager;
             yield return null;
 
@@ -159,7 +159,7 @@ namespace SliceAndSell.Tests
             manager.SelectExit((IXRSelectInteractor)socket, grab);
             manager.HoverExit((IXRHoverInteractor)socket, grab);
             yield return Seconds(0.3f);                         // after the flash
-            Assert.IsTrue(Cleared(tray, 0), "back to normal once the bag is taken out: no override left");
+            Assert.IsTrue(Cleared(tray, 0), "back to normal once the bowl is taken out: no override left");
         }
 
         // ---------- helpers ----------

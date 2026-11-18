@@ -2,9 +2,10 @@ using UnityEngine;
 
 namespace SliceAndSell
 {
-    public class Bag : MonoBehaviour
+    // The serving bowl a customer gets: one cut fruit plus optional extras (skewer, chili).
+    public class Bowl : MonoBehaviour
     {
-        public GameObject filledVisual;             // the slices showing in the bag (inactive in the prefab)
+        public GameObject filledVisual;             // the slices showing in the bowl (inactive in the prefab)
         public GameObject skewerVisual, chiliVisual;
 
         public string Contents { get; private set; }
@@ -18,15 +19,16 @@ namespace SliceAndSell
             Contents = fruit.fruitName;
             Cuts = fruit.CutsDone;
             if (filledVisual) filledVisual.SetActive(true);
+            GameEvents.RaiseAddedToBowl(transform.position, fruit.fruitName);
         }
 
-        // Returns false if the bag already has one (the extra is then left alone).
+        // Returns false if the bowl already has one (the extra is then left alone).
         public bool AddExtra(ExtraKind kind)
         {
             if (kind == ExtraKind.Skewer ? HasSkewer : HasChili) return false;
             if (kind == ExtraKind.Skewer) { HasSkewer = true; if (skewerVisual) skewerVisual.SetActive(true); }
             else { HasChili = true; if (chiliVisual) chiliVisual.SetActive(true); }
-            GameEvents.RaiseExtraAdded(transform.position, kind.ToString());
+            GameEvents.RaiseAddedToBowl(transform.position, kind.ToString());
             return true;
         }
     }
