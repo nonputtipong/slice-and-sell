@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main] # also keeps the Library cache warm for PRs
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write # test-runner publishes a "Test Results" check run
+
+jobs:
+  playmode-tests:
+    name: Play Mode tests
+    # Fork PRs get no secrets, so license activation would fail; skip instead.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      # Cache LFS objects so each run doesn't spend LFS bandwidth re-downloading them.
+      - name: List LFS objects
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+      - uses: actions/cache@v4
+        with:
+          path: .git/lfs
+          key: lfs-${{ hashFiles('.lfs-assets-id') }}
+      - name: Pull LFS objects
+        run: git lfs pull
+
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: Library-
+
+      # Compiling all assemblies (game, Editor, tests) happens before tests run,
+      # so a compile error fails this step too.
+      - uses: game-ci/unity-test-runner@v4
+        id: tests
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }} # optional, only for Plus/Pro
+        with:
+          unityVersion: auto # read from ProjectSettings/ProjectVersion.txt
+          testMode: playmode
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: Play Mode test results
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playmode-test-results
+          path: ${{ steps.tests.outputs.artifactsPath || 'artifacts' }}
+          if-no-files-found: warn
