@@ -1,0 +1,289 @@
+{
+  "fruits": [
+    {
+      "name": "Guava",
+      "file": "Guava.glb",
+      "price": 20,
+      "juiceColor": "#F59A92",
+      "size": [
+        0.0792,
+        0.092,
+        0.0795
+      ],
+      "cutVolume": {
+        "type": "sphere",
+        "center": [
+          0.0004,
+          0.046,
+          0.0001
+        ],
+        "size": [
+          0.092,
+          0.092,
+          0.092
+        ]
+      },
+      "stages": [
+        "Stage0",
+        "Stage1",
+        "Stage2"
+      ],
+      "cuts": [
+        {
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "point": [
+            -0.015,
+            0.0401,
+            0
+          ],
+          "depth": 0.0783
+        },
+        {
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "point": [
+            0.015,
+            0.0399,
+            0
+          ],
+          "depth": 0.078
+        }
+      ]
+    },
+    {
+      "name": "Mango",
+      "file": "Mango.glb",
+      "price": 25,
+      "juiceColor": "#EAF3AC",
+      "size": [
+        0.075,
+        0.0689,
+        0.11
+      ],
+      "cutVolume": {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0344,
+          0.0
+        ],
+        "size": [
+          0.075,
+          0.0689,
+          0.11
+        ]
+      },
+      "stages": [
+        "Stage0",
+        "Stage1",
+        "Stage2",
+        "Stage3"
+      ],
+      "cuts": [
+        {
+          "normal": [
+            0.866,
+            0.0,
+            0.5
+          ],
+          "point": [
+            -0.0217,
+            0.0344,
+            -0.0125
+          ],
+          "depth": 0.0593
+        },
+        {
+          "normal": [
+            0.866,
+            0.0,
+            0.5
+          ],
+          "point": [
+            0.0,
+            0.0344,
+            0.0
+          ],
+          "depth": 0.0685
+        },
+        {
+          "normal": [
+            0.866,
+            0.0,
+            0.5
+          ],
+          "point": [
+            0.0217,
+            0.0344,
+            0.0125
+          ],
+          "depth": 0.0515
+        }
+      ]
+    },
+    {
+      "name": "Pineapple",
+      "file": "Pineapple.glb",
+      "price": 35,
+      "juiceColor": "#FFE066",
+      "size": [
+        0.1157,
+        0.2706,
+        0.1225
+      ],
+      "cutVolume": {
+        "type": "box",
+        "center": [
+          0,
+          0.08,
+          0
+        ],
+        "size": [
+          0.1157,
+          0.16,
+          0.1157
+        ]
+      },
+      "stages": [
+        "Stage0",
+        "Stage1",
+        "Stage2",
+        "Stage3",
+        "Stage4"
+      ],
+      "cuts": [
+        {
+          "normal": [
+            0,
+            1,
+            0
+          ],
+          "point": [
+            0,
+            0.15,
+            0
+          ],
+          "depth": 0.1157
+        },
+        {
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "point": [
+            -0.03,
+            0.075,
+            0
+          ],
+          "depth": 0.15
+        },
+        {
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "point": [
+            0.0,
+            0.075,
+            0
+          ],
+          "depth": 0.15
+        },
+        {
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "point": [
+            0.03,
+            0.075,
+            0
+          ],
+          "depth": 0.15
+        }
+      ]
+    },
+    {
+      "name": "Watermelon",
+      "file": "Watermelon.glb",
+      "price": 40,
+      "juiceColor": "#F2545B",
+      "cleaver": true,
+      "size": [
+        0.22,
+        0.1505,
+        0.1483
+      ],
+      "cutVolume": {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0752,
+          0.0
+        ],
+        "size": [
+          0.22,
+          0.1505,
+          0.1483
+        ]
+      },
+      "stages": [
+        "Stage0",
+        "Stage1",
+        "Stage2",
+        "Stage3"
+      ],
+      "cuts": [
+        {
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "point": [
+            0.0,
+            0.0752,
+            0
+          ],
+          "depth": 0.1504
+        },
+        {
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "point": [
+            -0.055,
+            0.0724,
+            0
+          ],
+          "depth": 0.1346
+        },
+        {
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "point": [
+            0.055,
+            0.0724,
+            0
+          ],
+          "depth": 0.1346
+        }
+      ]
+    }
+  ]
+}

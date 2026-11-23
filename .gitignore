@@ -63,3 +63,14 @@ crashlytics-buildid.txt
 # OS
 .DS_Store
 Thumbs.db
+
+# Unity Android build scratch, profiler captures, OVR Metrics exports
+.utmp/
+/[Ll]ibrary/Bee/
+*.keystore
+*.jks
+*.data
+*.raw
+*.perfetto-trace
+*.pftrace
+OVRMetrics-*/
