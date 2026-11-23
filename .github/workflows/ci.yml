@@ -55,6 +55,8 @@ jobs:
         with:
           unityVersion: auto # read from ProjectSettings/ProjectVersion.txt
           testMode: playmode
+          # Pinned: "latest" asks the GitHub API unauthenticated and hits 403 on shared runner IPs.
+          cliVersion: v0.1.77
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: Play Mode test results
 
