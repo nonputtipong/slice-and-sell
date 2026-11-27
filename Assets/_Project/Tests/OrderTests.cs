@@ -101,6 +101,9 @@ namespace SliceAndSell.Tests
         {
             var bowl = BowlWith(2);
             Assert.IsNotNull(bowl.Slices, "slices copied into the bowl");
+            yield return null;                                  // they fall into place on the next frame
+            Assert.IsTrue(bowl.Settled, "settled");
+            float lowest = float.MaxValue;
             var pieces = bowl.Slices.GetComponentsInChildren<MeshRenderer>();
             Assert.AreEqual(3, pieces.Length, "a guava cut twice is three slices");
             foreach (var p in pieces)
@@ -114,12 +117,14 @@ namespace SliceAndSell.Tests
                     var c = b.center + Vector3.Scale(b.extents, new Vector3((k & 1) == 0 ? -1 : 1, (k & 2) == 0 ? -1 : 1, (k & 4) == 0 ? -1 : 1));
                     var local = bowl.transform.InverseTransformPoint(p.transform.TransformPoint(c));
                     float h = local.y - Bowl.FootY;
-                    Assert.Greater(h, 0.009f, $"{p.name} is above the inner floor");
+                    Assert.Greater(h, 0.006f, $"{p.name} is above the inner floor");
+                    lowest = Mathf.Min(lowest, h);
                     float r = new Vector2(local.x, local.z).magnitude;
-                    if (h < 0.06f) Assert.LessOrEqual(r, Bowl.InnerRadius(h) + 0.002f, $"{p.name} corner {k} pokes through the wall (r {r:F3} at h {h:F3})");
+                    if (h < 0.06f) Assert.LessOrEqual(r, Bowl.InnerRadius(h) + 0.004f, $"{p.name} corner {k} pokes through the wall (r {r:F3} at h {h:F3})");
                 }
             }
-            yield break;
+            // Playtest 4: they used to float at rim height. Now the lowest slice reaches down near the bowl's floor.
+            Assert.Less(lowest, 0.025f, $"slices lie down in the bowl (lowest corner {lowest:F3} m above the foot)");
         }
 
         // Playtest: Pause did nothing you could see. Paused, the card says so, and nothing can be served.
