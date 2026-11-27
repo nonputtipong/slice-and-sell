@@ -75,7 +75,7 @@ Thumbs.db
 *.pftrace
 OVRMetrics-*/
 
-# Performance report: raw Unity Profiler captures (~170 MB each, over GitHub's 100 MB limit), APK copies, the zip
-PerfReport/**/*.data
-PerfReport/builds/
+# Performance report: raw device captures, screenshots, profiler dumps and APKs stay local (review: ~9.7 MB of raw
+# data was tracked); the final PDF is shared with the team separately.
+PerfReport/
 PerfReport.zip
