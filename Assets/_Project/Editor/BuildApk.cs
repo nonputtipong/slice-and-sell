@@ -76,11 +76,19 @@ public static class BuildApk
             locationPathName = OutputPath,
             target = BuildTarget.Android,
             targetGroup = BuildTargetGroup.Android,
-            options = dev ? BuildOptions.Development | BuildOptions.ConnectWithProfiler : BuildOptions.None,
+            // Development only, no Autoconnect Profiler: an autoconnect player buffers profiler data from its first frame for
+            // the Editor that built it and stops profiling once 128 MB is full (seconds), so a USB capture from another
+            // Editor could never attach. Without it, the Profiler attaches over adb whenever the Editor connects.
+            options = dev ? BuildOptions.Development : BuildOptions.None,
         };
 
+        // Development (measuring) builds record per-frame CPU/GPU work for PerfStatsLogger; the setting goes back after.
+        bool timingStats = PlayerSettings.enableFrameTimingStats;
+        if (dev) PlayerSettings.enableFrameTimingStats = true;
         var clock = Stopwatch.StartNew();
-        var summary = BuildPipeline.BuildPlayer(options).summary;
+        BuildSummary summary;
+        try { summary = BuildPipeline.BuildPlayer(options).summary; }
+        finally { PlayerSettings.enableFrameTimingStats = timingStats; }
         clock.Stop();
         if (summary.result != BuildResult.Succeeded)
             return Fail($"build {summary.result} with {summary.totalErrors} errors after {clock.Elapsed.TotalSeconds:F0} s");

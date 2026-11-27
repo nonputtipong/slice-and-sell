@@ -3,9 +3,9 @@ using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
 namespace SliceAndSell
 {
-    // The board socket holds one fruit. When that fruit is fully cut and an empty bowl sits on the
-    // scoop spot, the slices go into the bowl (whichever happens last triggers it). The player can also lift the
-    // cut fruit and let go over any bowl (BowlMouth).
+    // The board socket holds one fruit; the scoop spot next to it is where a bowl always waits (its Dispenser).
+    // Nothing jumps into the bowl by itself: the player lifts the cut fruit and lets go over the bowl (BowlMouth),
+    // then carries the bowl to the hand-off tray.
     // It also draws the next cut's guide line on the fruit (GDD > Precision).
     public class CuttingBoard : MonoBehaviour
     {
@@ -13,19 +13,7 @@ namespace SliceAndSell
         public LineRenderer guideLine;
 
         public Fruit Fruit => fruitSocket.hasSelection ? fruitSocket.firstInteractableSelected.transform.GetComponent<Fruit>() : null;
-        Bowl ScoopBowl => scoopSocket.hasSelection ? scoopSocket.firstInteractableSelected.transform.GetComponent<Bowl>() : null;
-
-        void Update()
-        {
-            var fruit = Fruit; var bowl = ScoopBowl;
-            if (fruit && fruit.IsFullyCut && bowl && !bowl.IsFilled)
-            {
-                bowl.Fill(fruit);
-                Destroy(fruit.gameObject);
-                fruit = null;
-            }
-            ShowGuide(fruit);
-        }
+        void Update() => ShowGuide(Fruit);
 
         // A line where the next cut plane meets the fruit: across the top for vertical cuts,
         // across the front for horizontal ones (the pineapple crown).

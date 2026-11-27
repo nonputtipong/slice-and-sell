@@ -34,6 +34,8 @@ namespace SliceAndSell
         void LateUpdate()
         {
             Vector3 s = edgeStart.position, e = edgeEnd.position;
+            // Paused: no cutting, and a pass in progress is dropped (the blade must go in again after resume).
+            if (GamePause.Paused) { tracked = null; tracker = null; lastStart = s; lastEnd = e; return; }
             var fruit = board ? board.Fruit : null;
             // Check !fruit first: a destroyed fruit (in a bowl) and null compare equal, so fruit != tracked misses it.
             if (!fruit || fruit.IsFullyCut) { tracked = null; tracker = null; }

@@ -1,0 +1,53 @@
+{
+ "frames": 2000,
+ "frame_ms": {
+  "mean": 13.89,
+  "median": 13.94,
+  "p95": 15.33
+ },
+ "main_work_ms": {
+  "mean": 6.06,
+  "median": 6.04,
+  "p95": 7.04
+ },
+ "main_wait_ms": {
+  "mean": 7.83,
+  "median": 7.88,
+  "p95": 8.81
+ },
+ "render_work_ms": {
+  "mean": 4.18,
+  "median": 4.16,
+  "p95": 4.65
+ },
+ "render_wait_ms": {
+  "mean": 9.7,
+  "median": 9.77,
+  "p95": 10.96
+ },
+ "gpu_ms": {
+  "mean": 0.0,
+  "median": 0.0,
+  "p95": 0.0
+ },
+ "draw_calls": {
+  "mean": 627.5,
+  "median": 628.0,
+  "p95": 664.0
+ },
+ "setpass": {
+  "mean": 57.0,
+  "median": 56.0,
+  "p95": 62.0
+ },
+ "batches": {
+  "mean": 447.19,
+  "median": 448.0,
+  "p95": 485.0
+ },
+ "shadow_casters": {
+  "mean": 119.96,
+  "median": 120.0,
+  "p95": 132.0
+ }
+}

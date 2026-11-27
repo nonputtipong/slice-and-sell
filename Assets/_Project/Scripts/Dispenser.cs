@@ -15,6 +15,9 @@ namespace SliceAndSell
         public Transform spawnPoint;
         public float respawnDelay = 0.3f;
         public float leftBin = 0.12f;       // m from the spawn point: out of every crate (the widest is 23 cm)
+        // The bowl spot: one bowl waits there, and picking it up or carrying it away makes no new one. The next appears
+        // only once that bowl is gone: handed over (the tray uses it up) or dropped and despawned.
+        public bool onlyWhenGone;
 
         public XRGrabInteractable Current { get; private set; }
 
@@ -39,12 +42,12 @@ namespace SliceAndSell
                 return;
             }
             // Unity null: destroyed without a grab. Far from the spawn point: knocked out of the bin.
-            if (!Current || Away(Current)) Release();
+            if (!Current || (!onlyWhenGone && Away(Current))) Release();
         }
 
         bool Away(Component item) => (item.transform.position - spawnPoint.position).sqrMagnitude > leftBin * leftBin;
 
-        void OnTaken(SelectEnterEventArgs args) => Release();
+        void OnTaken(SelectEnterEventArgs args) { if (!onlyWhenGone) Release(); }
 
         void Release()
         {

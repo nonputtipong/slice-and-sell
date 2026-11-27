@@ -94,6 +94,54 @@ namespace SliceAndSell.Tests
             Assert.AreEqual(DeliveryResult.Correct, orders.Deliver(BowlWith(2)), "and the same order can still be served");
         }
 
+        // Playtest: the bowl showed an orange blob ("soup"). It now holds the fruit's own slices, laid in the bowl at their
+        // real size (playtest 4: shrinking them to fit looked wrong); one wider than the bowl rests on the rim.
+        [UnityTest]
+        public IEnumerator BowlHoldsTheCutFruitsSlices()
+        {
+            var bowl = BowlWith(2);
+            Assert.IsNotNull(bowl.Slices, "slices copied into the bowl");
+            var pieces = bowl.Slices.GetComponentsInChildren<MeshRenderer>();
+            Assert.AreEqual(3, pieces.Length, "a guava cut twice is three slices");
+            foreach (var p in pieces)
+            {
+                Assert.IsNull(p.GetComponent<Collider>(), "slices are only a look");
+                Assert.AreEqual(1f, p.transform.lossyScale.x, 1e-3f, $"{p.name} keeps its real size");
+                // Below the rim, every corner of the slice's box is inside the bowl's sloping wall at that height.
+                var b = p.GetComponent<MeshFilter>().sharedMesh.bounds;
+                for (int k = 0; k < 8; k++)
+                {
+                    var c = b.center + Vector3.Scale(b.extents, new Vector3((k & 1) == 0 ? -1 : 1, (k & 2) == 0 ? -1 : 1, (k & 4) == 0 ? -1 : 1));
+                    var local = bowl.transform.InverseTransformPoint(p.transform.TransformPoint(c));
+                    float h = local.y - Bowl.FootY;
+                    Assert.Greater(h, 0.009f, $"{p.name} is above the inner floor");
+                    float r = new Vector2(local.x, local.z).magnitude;
+                    if (h < 0.06f) Assert.LessOrEqual(r, Bowl.InnerRadius(h) + 0.002f, $"{p.name} corner {k} pokes through the wall (r {r:F3} at h {h:F3})");
+                }
+            }
+            yield break;
+        }
+
+        // Playtest: Pause did nothing you could see. Paused, the card says so, and nothing can be served.
+        [UnityTest]
+        public IEnumerator PauseShowsOnTheCardAndStopsServing()
+        {
+            orders.orderCard = new GameObject("Card").AddComponent<TMPro.TextMeshPro>();
+            orders.orderCard.transform.SetParent(orders.transform);
+            var order = orders.Current;
+            try
+            {
+                GamePause.Set(true);
+                Assert.AreEqual(OrderManager.PausedCard, orders.orderCard.text);
+                Assert.AreEqual(DeliveryResult.NoCustomer, orders.Deliver(BowlWith(2)), "the tray doesn't serve while paused");
+                Assert.AreSame(order, orders.Current, "the customer still waits");
+            }
+            finally { GamePause.Set(false); }
+            Assert.AreEqual(order.CardText, orders.orderCard.text, "the order is back on resume");
+            Assert.AreEqual(DeliveryResult.Correct, orders.Deliver(BowlWith(2)));
+            yield break;
+        }
+
         [UnityTest]
         public IEnumerator BellCallsNextCustomerEarly()
         {

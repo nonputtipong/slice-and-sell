@@ -23,6 +23,7 @@ public static class StallBuilder
     const string Lab5Scene = "Assets/HCD545/Lab5/Scenes/Lab5Interaction.unity";
     const string FruitsJson = Root + "/Models/Fruits/fruits.json";
     const int LayerDefault = 1 << 0, LayerFruit = 1 << 1, LayerBowl = 1 << 2;   // XRI/Settings/InteractionLayerSettings
+    const int LayerMag = 1 << 3;                                                 // pistol magazines: only the grip's socket takes them
     const float CounterTop = 0.9f;
 
     static readonly string[] Lab5Roots = { "Lamp", "Cube 3 cm", "Cube 6 cm", "Cube 12 cm", "Grab table", "Teleport anchors",
@@ -72,6 +73,11 @@ public static class StallBuilder
         var bowl = SavePrefab(MakeBowl(), "Bowl");
         var skewer = SavePrefab(MakeSkewer(), "Skewer");
         var chili = SavePrefab(MakeChili(), "Chili");
+        // With the other prefabs, before the scene opens: saving a prefab mid-build drops unrecorded changes on
+        // prefab instances already in the scene (the knives' rack board was lost that way).
+        var bulletPrefab = SavePrefab(MakeBullet(), "Bullet");
+        magPrefab = SavePrefab(MakeMagazine(), "Magazine");
+        pistolPrefab = SavePrefab(MakePistol(bulletPrefab.GetComponent<Bullet>()), "Pistol");
         var customers = CustomerPrefabBuilder.Build().Select(p => p.GetComponent<Customer>()).ToArray();
         var menu = specs.Select(s => new FruitMenuItem { name = s.name, cuts = s.cuts.Length, price = s.price }).ToArray();
         var levels = MakeLevels();
@@ -180,9 +186,12 @@ public static class StallBuilder
             Dispenser(crate, fruits[i], crates[i] + new Vector3(0, 0.01f, 0));
         }
 
-        // Bowl stack and the extras (skewer cup, chili tray) on the right.
-        var bowls = Crate("Bowl stack", stall, new Vector3(0.42f, CounterTop, 0.5f), 0.16f, 0.02f);     // a supply tray like the others
-        Dispenser(bowls, bowl, bowls.position + new Vector3(0, BowlHalfHeight + 0.002f, 0));
+        // A bowl always waits on the scoop spot, next to the board: the cut fruit goes in by hand. Lifting it (to the
+        // hand-off tray) makes no new one; the next appears once it is handed over, or dropped and despawned.
+        Dispenser(board.scoopSocket.transform, bowl, board.scoopSocket.transform.position + new Vector3(0, 0.002f, 0));
+        var bowls = board.scoopSocket.GetComponent<SliceAndSell.Dispenser>();
+        bowls.onlyWhenGone = true;
+        // The extras (skewer cup, chili tray) on the right.
         var cup = Crate("Skewer cup", stall, new Vector3(0.615f, CounterTop, 0.42f), 0.07f, 0.06f);     // behind the cleaver's blade
         Dispenser(cup, skewer, cup.position + new Vector3(0, 0.11f, 0));
         var chiliTray = Crate("Chili tray", stall, new Vector3(0.59f, CounterTop, 0.56f), 0.12f, 0.03f);
@@ -202,7 +211,13 @@ public static class StallBuilder
                                                  Quaternion.AngleAxis(8.7f, Vector3.right) * Quaternion.LookRotation(Vector3.right, Vector3.back));
         cleaver.GetComponent<Knife>().board = board;
         var whoosh = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/ThirdParty/Kenney/InterfaceSounds/maximize_001.ogg");
-        foreach (var tool in new[] { knife, cleaver })
+        // The pistol (for the fruit thief) lying on its side where the bowl stack was, grip toward the player, barrel
+        // to the right; the ammo tray of endless magazines just behind it. It comes back to here like the knives.
+        var pistol = (GameObject)PrefabUtility.InstantiatePrefab(pistolPrefab, stall);
+        pistol.transform.SetPositionAndRotation(new Vector3(0.37f, CounterTop + 0.0155f, 0.46f), Quaternion.LookRotation(Vector3.right, Vector3.forward));
+        var ammo = Crate("Ammo tray", stall, new Vector3(0.42f, CounterTop, 0.6f), 0.07f, 0.025f);
+        Dispenser(ammo, magPrefab, ammo.position + new Vector3(0, 0.043f, 0));
+        foreach (var tool in new[] { knife, cleaver, pistol })
         {
             var rack = tool.GetComponent<ReturnToRack>();
             rack.board = boardGo.transform.Find("Board");     // the board's top, not the "Cutting board" root at the stall origin
@@ -239,8 +254,8 @@ public static class StallBuilder
         orders.autoStart = false;
         var (mainMenu, _) = MenuBuilder.Build(stall, orders);
 
-        // Wrist menu (left palm up, or the Menu button) at the scene root: it follows the wrist, not the stall.
-        var wristMenu = WristMenuBuilder.Build(null, orders);
+        // In-game menu at the scene root (it opens in front of the eyes); its MENU sign sits on the cart.
+        var wristMenu = WristMenuBuilder.Build(null, stall, orders);
         UnityEditor.Events.UnityEventTools.AddPersistentListener(wristMenu.onExitToMenu, mainMenu.Show);
 
         // Hand-off tray (far edge, in front of the customer, its back rim just inside the cart's lip at z 0.82).
@@ -281,8 +296,33 @@ public static class StallBuilder
         StreetSounds(stall, orders.counterSpot);
         // The pushcart look replaces the counter box's own (the box keeps the collider); umbrella, bulbs, lanterns, scale...
         if (StreetBuilder.DressStall(stall, counter.transform.position)) counter.GetComponent<Renderer>().enabled = false;
-        TrimShadows(stall);
-        PickDecorBatches(stall);
+        // Performance report, build C ("before" optimisation 2): -perfBeforeOpt2 on the command line skips the shadow
+        // trimming and the decor batching. Never set for the real game.
+        if (!Environment.GetCommandLineArgs().Contains("-perfBeforeOpt2"))
+        {
+            TrimShadows(stall);
+            PickDecorBatches(stall);
+        }
+        else Debug.LogWarning("[StallBuilder] -perfBeforeOpt2: TrimShadows and BatchDecor skipped (performance report build C)");
+        PerfHud(stall);
+    }
+
+    // Performance measuring (Lab 6 FrameHud + perf-log.csv): on the stall's upper right, over the bell and clear of the
+    // counter and the customer's face, facing the player, Start route by ray. It exists only in Development builds on
+    // the device (DevelopmentOnly): a release build and the Editor remove it at start. Added after the decor batching,
+    // and a canvas, so it is never combined or shadow-trimmed.
+    const string FrameHudPath = "Assets/HCD545/Lab6/Prefabs/FrameHud.prefab";
+    static void PerfHud(Transform stall)
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(FrameHudPath);
+        if (!prefab) { Debug.LogWarning("[StallBuilder] no FrameHud prefab: performance HUD left out"); return; }
+        var hud = (GameObject)PrefabUtility.InstantiatePrefab(prefab, stall);
+        PrefabUtility.UnpackPrefabInstance(hud, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);   // its own copy: components can go
+        var pos = new Vector3(0.6f, 1.38f, 0.85f);
+        hud.transform.SetPositionAndRotation(stall.TransformPoint(pos), Quaternion.LookRotation(stall.TransformPoint(pos) - new Vector3(0f, 1.6f, 0f)));
+        foreach (var follow in hud.GetComponentsInChildren<UnityEngine.XR.Interaction.Toolkit.UI.LazyFollow>(true)) Object.DestroyImmediate(follow);   // stays on the stall
+        hud.AddComponent<SliceAndSell.Perf.DevelopmentOnly>();
+        hud.AddComponent<SliceAndSell.Perf.PerfStatsLogger>().fps = hud.GetComponentInChildren<HCD545.FpsLogger>(true);
     }
 
     // Quest draw calls (handoff #6): the still decor under the stall is combined into a few batches at start
@@ -502,8 +542,15 @@ public static class StallBuilder
         // The Blender Eto over the two boxes, which keep the colliders.
         if (StreetBuilder.Prop("Cleaver", root.transform, Vector3.zero, 0f))
             foreach (var b in new[] { handle, blade }) b.GetComponent<Renderer>().enabled = false;
-        var grab = Grab(root, LayerDefault, dynamicAttach: true);     // each hand holds the handle where it closes
-        grab.selectMode = InteractableSelectMode.Multiple;           // a second hand may steady it
+        // Snaps into the hand (no dynamic attach): the handle in the palm, blade pointing forward, edge down, however it
+        // was picked up, like the paring knife. A second hand may steady it, but only the first hand aims it.
+        var grab = Grab<KnifeGrab>(root, LayerDefault, dynamicAttach: false);
+        grab.attachTransform = Marker(root.transform, "Attach", new Vector3(0, 0, -0.0025f));
+        grab.handAttachTransform = Marker(root.transform, "Hand attach", new Vector3(0, 0, -0.0025f));
+        grab.handAttachTransform.localRotation = Quaternion.Euler(KnifeHandGripEuler);
+        grab.selectMode = InteractableSelectMode.Multiple;
+        var twoHands = root.AddComponent<UnityEngine.XR.Interaction.Toolkit.Transformers.XRGeneralGrabTransformer>();
+        twoHands.allowTwoHandedRotation = UnityEngine.XR.Interaction.Toolkit.Transformers.XRGeneralGrabTransformer.TwoHandedRotationMode.FirstHandOnly;
         var tool = root.AddComponent<Knife>();
         tool.cleaver = true;
         tool.edgeStart = Marker(root.transform, "Edge start", new Vector3(0, -0.083f, 0.09f));
@@ -511,6 +558,81 @@ public static class StallBuilder
         root.AddComponent<ReturnToRack>();
         root.AddComponent<HoldOnTrackingLoss>();
         Feedback(root, "knife");
+        return root;
+    }
+
+    // ---------- pistol (the thief) ----------
+
+    static GameObject pistolPrefab, magPrefab;     // saved in Build() with the other prefabs
+    static readonly Color GunMetal = new Color(0.13f, 0.13f, 0.15f), GunGrip = new Color(0.27f, 0.2f, 0.15f);
+
+    // Built along +Z like the knife: barrel forward, slide on top, grip down. The hand holds the grip ("Grip attach",
+    // barrel along the hand's pointing direction). A socket under the grip takes a magazine (LayerMag only).
+    static GameObject MakePistol(Bullet bullet)
+    {
+        var root = new GameObject("Pistol");
+        var rb = root.AddComponent<Rigidbody>(); rb.mass = 0.8f;
+        var metal = Mat("Gun metal", GunMetal);
+        var slide = Box("Slide", root.transform, new Vector3(0, 0.03f, 0.045f), new Vector3(0.03f, 0.034f, 0.18f), metal);
+        var grip = Box("Grip", root.transform, new Vector3(0, -0.025f, -0.02f), new Vector3(0.028f, 0.09f, 0.04f), Mat("Gun grip", GunGrip));
+        Box("Trigger guard", root.transform, new Vector3(0, -0.008f, 0.032f), new Vector3(0.006f, 0.006f, 0.045f), metal, false);
+        Box("Trigger", root.transform, new Vector3(0, 0.002f, 0.02f), new Vector3(0.005f, 0.016f, 0.006f), metal, false);
+        Box("Front sight", root.transform, new Vector3(0, 0.05f, 0.125f), new Vector3(0.004f, 0.006f, 0.006f), metal, false);
+        Box("Muzzle ring", root.transform, new Vector3(0, 0.03f, 0.136f), new Vector3(0.018f, 0.018f, 0.004f), Mat("Muzzle", new Color(0.05f, 0.05f, 0.05f)), false);
+
+        var grab = Grab(root, LayerDefault, dynamicAttach: false);
+        grab.attachTransform = Marker(root.transform, "Grip attach", new Vector3(0, -0.01f, -0.02f));
+        // Grabbed by its body only: the magazine socket's trigger is not a handle.
+        grab.colliders.Clear();
+        grab.colliders.Add(slide.GetComponent<Collider>()); grab.colliders.Add(grip.GetComponent<Collider>());
+
+        var socket = Socket("Magazine socket", root.transform, new Vector3(0, -0.085f, -0.02f), new Vector3(0.05f, 0.05f, 0.06f), LayerMag);
+        socket.attachTransform = Marker(socket.transform, "Seat", new Vector3(0, 0.05f, 0));     // the magazine sits in the grip
+
+        var pistol = root.AddComponent<Pistol>();
+        pistol.muzzle = Marker(root.transform, "Muzzle", new Vector3(0, 0.03f, 0.14f));
+        pistol.magSocket = socket;
+        pistol.bulletPrefab = bullet;
+        pistol.shotSound = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/ThirdParty/Kenney/ImpactSounds/impactPunch_heavy_000.ogg");
+        pistol.drySound = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/ThirdParty/Kenney/InterfaceSounds/click_004.ogg");
+        pistol.magInSound = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/ThirdParty/Kenney/InterfaceSounds/switch_002.ogg");
+        root.AddComponent<ReturnToRack>();
+        root.AddComponent<HoldOnTrackingLoss>();
+        Feedback(root, "knife");
+        return root;
+    }
+
+    // 2.2 x 8 x 3.2 cm, a brass round showing at the top.
+    static GameObject MakeMagazine()
+    {
+        var root = new GameObject("Magazine");
+        var rb = root.AddComponent<Rigidbody>(); rb.mass = 0.12f;
+        var col = root.AddComponent<BoxCollider>(); col.size = new Vector3(0.022f, 0.08f, 0.032f);
+        Box("Body", root.transform, Vector3.zero, new Vector3(0.022f, 0.08f, 0.032f), Mat("Gun metal", GunMetal), false);
+        Box("Base plate", root.transform, new Vector3(0, -0.042f, 0), new Vector3(0.026f, 0.006f, 0.036f), Mat("Gun grip", GunGrip), false);
+        Box("Round", root.transform, new Vector3(0, 0.042f, 0.004f), new Vector3(0.008f, 0.005f, 0.018f), Mat("Brass", new Color(0.85f, 0.65f, 0.25f)), false);
+        Grab(root, LayerDefault | LayerMag, dynamicAttach: true);
+        root.AddComponent<Magazine>();
+        root.AddComponent<DespawnWhenDropped>();
+        root.AddComponent<HoldOnTrackingLoss>();
+        Feedback(root, "extra");
+        return root;
+    }
+
+    // A small bright round with a short tracer trail.
+    static GameObject MakeBullet()
+    {
+        var root = new GameObject("Bullet");
+        var tracer = Mat("Tracer", new Color(1f, 0.85f, 0.35f));
+        var ball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        Object.DestroyImmediate(ball.GetComponent<Collider>());
+        ball.name = "Round"; ball.transform.SetParent(root.transform, false); ball.transform.localScale = Vector3.one * 0.012f;
+        ball.GetComponent<Renderer>().sharedMaterial = tracer;
+        ball.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        var trail = root.AddComponent<TrailRenderer>();
+        trail.time = 0.07f; trail.startWidth = 0.008f; trail.endWidth = 0f; trail.minVertexDistance = 0.02f;
+        trail.sharedMaterial = tracer; trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        root.AddComponent<Bullet>();
         return root;
     }
 

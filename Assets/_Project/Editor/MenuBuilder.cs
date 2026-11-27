@@ -72,7 +72,7 @@ namespace SliceAndSell
                 { "Cut", "Push the blade down along the line", "Push the blade down along the line" },
                 { "Bell", "Poke it (or point + trigger)", "Poke it (or point + pinch)" },
                 { "Eto", "Grip the handle, chop down (cuts any fruit)", "Grab the handle, push down (cuts any fruit)" },
-                { "Menu", "Menu button", "Turn your left palm up" },
+                { "Menu", "Menu button, or poke the MENU sign", "Poke the MENU sign (front right)" },
             };
             for (int r = 0; r < rows.GetLength(0); r++)
             {

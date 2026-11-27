@@ -64,6 +64,7 @@ namespace SliceAndSell
             GameEvents.WalkedOut += OnError;
             GameEvents.AddedToBowl += OnExtra;
             GameEvents.ShiftEnded += OnShiftEnded;
+            GameEvents.Splat += OnSplat;
         }
 
         void OnDisable()
@@ -75,6 +76,7 @@ namespace SliceAndSell
             GameEvents.WalkedOut -= OnError;
             GameEvents.AddedToBowl -= OnExtra;
             GameEvents.ShiftEnded -= OnShiftEnded;
+            GameEvents.Splat -= OnSplat;
         }
 
         void OnCut(Fruit fruit, CutInfo cut, int combo)
@@ -105,6 +107,13 @@ namespace SliceAndSell
         {
             var cam = Camera.main;
             Play(won ? shiftWon : shiftLost, cam ? cam.transform.position : transform.position, 0.8f, 1f);
+        }
+
+        // Thrown food burst on a face: a juice spray and a wet crunch there.
+        void OnSplat(Vector3 at, Color colour)
+        {
+            if (juice) juice.Emit(new ParticleSystem.EmitParams { startColor = colour, position = at, applyShapeToPosition = true }, powerJuiceCount);
+            Play(crunch, at, 0.9f, Random.Range(0.8f, 0.9f));
         }
 
         // Juice sprays from the whole cut line (where the blade went in across the fruit), not one point.

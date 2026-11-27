@@ -39,6 +39,9 @@ namespace SliceAndSell
 
         public void OnWalkedOut() => Combo = 0;
 
+        // Thief caught (+) or got away with the fruit (-); money never goes below zero.
+        public void AddMoney(int amount) => Money = Mathf.Max(0, Money + amount);
+
         // 1 star at the target, 2 at 125%, 3 at 150%.
         public static int Stars(int money, int target) =>
             target <= 0 ? 3 : money >= target * 1.5f ? 3 : money >= target * 1.25f ? 2 : money >= target ? 1 : 0;

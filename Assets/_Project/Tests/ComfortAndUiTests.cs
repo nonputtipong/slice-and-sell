@@ -148,7 +148,7 @@ namespace SliceAndSell.Tests
             yield return LoadStall();
             var batch = Object.FindAnyObjectByType<BatchDecor>();
             Assert.IsNotNull(batch, "the stall root combines its decor");
-            Assert.Greater(batch.Combined, 50, "most of the decor is combined");
+            Assert.GreaterOrEqual(batch.Combined, 45, "most of the decor is combined");   // 50 since the bowl stack (4 crate walls) went
             var cart = batch.decor.Select(g => g.GetComponent<MeshRenderer>()).First(r => r.GetComponentsInParent<Transform>().Any(t => t.name == "PushCart"));
             Assert.IsTrue(cart.isPartOfStaticBatch, "the cart is in a combined batch");
             float standing = cart.bounds.center.y;
@@ -237,6 +237,58 @@ namespace SliceAndSell.Tests
             Assert.IsTrue(o.Running);
             Assert.IsNotNull(o.Current);
             Object.Destroy(o.customer); Object.Destroy(o.gameObject);
+        }
+
+        // Playtest: no wrist gesture. The MENU sign on the cart opens the menu in front of the eyes; Pause keeps it open
+        // (Close greyed out) until Resume; customers freeze while paused.
+        [UnityTest]
+        public IEnumerator MenuSignOpensTheMenuAndPauseKeepsItOpen()
+        {
+            yield return LoadStall();
+            var menu = Object.FindAnyObjectByType<WristMenu>(FindObjectsInactive.Include);
+            var sign = Object.FindObjectsByType<Button>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                .Single(b => b.name == "MENU button");
+            Assert.IsTrue(sign.GetComponentInParent<StanceHeight>(true), "the sign is on the stall (seated mode lowers it)");
+            Assert.IsFalse(menu.panel.gameObject.activeSelf, "closed at start");
+            yield return new WaitForSeconds(0.5f);
+            Assert.IsFalse(menu.panel.gameObject.activeSelf, "nothing opens it but a button");
+
+            sign.onClick.Invoke();
+            Assert.IsTrue(menu.IsOpen && menu.panel.gameObject.activeSelf, "the sign opens it");
+            var toPanel = menu.panel.position - menu.head.position;
+            Assert.Less(toPanel.magnitude, 0.6f, "in front of the eyes, in poke reach");
+            Assert.Greater(Vector3.Dot(toPanel.normalized, menu.head.forward), 0.5f, "where you look");
+
+            menu.TogglePause();
+            Assert.IsTrue(GamePause.Paused);
+            Assert.AreEqual("Resume", menu.pauseLabel.text);
+            Assert.AreEqual("Paused", menu.titleLabel.text);
+            Assert.IsFalse(menu.closeButton.interactable, "Close is greyed out while paused");
+            menu.Close(); sign.onClick.Invoke();
+            Assert.IsTrue(menu.IsOpen, "stays open while paused, so Resume is in reach");
+
+            menu.TogglePause();
+            Assert.IsFalse(GamePause.Paused);
+            Assert.IsTrue(menu.closeButton.interactable);
+            menu.closeButton.onClick.Invoke();
+            Assert.IsFalse(menu.IsOpen || menu.panel.gameObject.activeSelf, "Close closes it");
+        }
+
+        [UnityTest]
+        public IEnumerator PausedCustomersStandStill()
+        {
+            var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Prefabs/Customers/Salaryman.prefab");
+            var c = Object.Instantiate(prefab).GetComponent<Customer>();
+            c.Arrive(Vector3.zero, new Vector3(0, 0, 5f), null);
+            yield return new WaitForSeconds(0.2f);
+            GamePause.Set(true);
+            var at = c.transform.position;
+            yield return new WaitForSeconds(0.3f);
+            Assert.AreEqual(at, c.transform.position, "no walking while paused");
+            GamePause.Set(false);
+            yield return new WaitForSeconds(0.2f);
+            Assert.Greater(c.transform.position.z, at.z, "walks on after resume");
+            Object.Destroy(c.gameObject);
         }
 
         // ---------- helpers ----------

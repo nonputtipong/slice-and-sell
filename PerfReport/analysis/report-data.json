@@ -1,0 +1,180 @@
+{
+ "window_s": 180.0,
+ "A": {
+  "run": "A-current",
+  "walkthrough": {
+   "label": "route 1",
+   "frames": 12962,
+   "seconds": 180.0,
+   "avg_fps": 72.0,
+   "low1_fps": 72.0,
+   "frame_ms_median": 13.89,
+   "missed": 0,
+   "draw_calls": 608.3,
+   "setpass": 58.6,
+   "batches": 431.9,
+   "shadow_casters": 112.7,
+   "triangles": 159478.8,
+   "gpu_app_ms": 7.11,
+   "gpu_app_ms_p95": 7.51,
+   "gpu_samples": 180
+  },
+  "profiler": {
+   "frames": 2000,
+   "frame_ms": {
+    "mean": 13.89,
+    "p95": 15.32
+   },
+   "main_work_ms": {
+    "mean": 6.06,
+    "p95": 7.04
+   },
+   "main_wait_ms": {
+    "mean": 7.83,
+    "p95": 8.81
+   },
+   "render_work_ms": {
+    "mean": 4.18,
+    "p95": 4.65
+   },
+   "render_wait_ms": {
+    "mean": 9.7,
+    "p95": 10.96
+   },
+   "draw_calls": {
+    "mean": 627.5,
+    "p95": 663.0
+   },
+   "setpass": {
+    "mean": 57.0,
+    "p95": 62.0
+   },
+   "batches": {
+    "mean": 447.19,
+    "p95": 484.0
+   },
+   "shadow_casters": {
+    "mean": 119.96,
+    "p95": 132.0
+   }
+  }
+ },
+ "B": {
+  "run": "B-before-opt1",
+  "walkthrough": {
+   "label": "route 1",
+   "frames": 12962,
+   "seconds": 180.0,
+   "avg_fps": 72.0,
+   "low1_fps": 72.0,
+   "frame_ms_median": 13.89,
+   "missed": 0,
+   "draw_calls": 598.9,
+   "setpass": 56.0,
+   "batches": 419.8,
+   "shadow_casters": 109.7,
+   "triangles": 155480.9,
+   "gpu_app_ms": 7.31,
+   "gpu_app_ms_p95": 7.62,
+   "gpu_samples": 180
+  },
+  "profiler": {
+   "frames": 2000,
+   "frame_ms": {
+    "mean": 13.89,
+    "p95": 15.18
+   },
+   "main_work_ms": {
+    "mean": 5.78,
+    "p95": 6.58
+   },
+   "main_wait_ms": {
+    "mean": 8.11,
+    "p95": 9.02
+   },
+   "render_work_ms": {
+    "mean": 4.06,
+    "p95": 4.56
+   },
+   "render_wait_ms": {
+    "mean": 9.83,
+    "p95": 11.01
+   },
+   "draw_calls": {
+    "mean": 598.63,
+    "p95": 636.0
+   },
+   "setpass": {
+    "mean": 55.72,
+    "p95": 63.0
+   },
+   "batches": {
+    "mean": 416.37,
+    "p95": 451.0
+   },
+   "shadow_casters": {
+    "mean": 102.98,
+    "p95": 114.0
+   }
+  }
+ },
+ "C": {
+  "run": "C-before-opt2",
+  "walkthrough": {
+   "label": "route 1",
+   "frames": 12962,
+   "seconds": 180.1,
+   "avg_fps": 72.0,
+   "low1_fps": 71.4,
+   "frame_ms_median": 13.89,
+   "missed": 1,
+   "draw_calls": 726.3,
+   "setpass": 23.8,
+   "batches": 552.5,
+   "shadow_casters": 217.0,
+   "triangles": 165465.6,
+   "gpu_app_ms": 7.57,
+   "gpu_app_ms_p95": 7.91,
+   "gpu_samples": 180
+  },
+  "profiler": {
+   "frames": 2000,
+   "frame_ms": {
+    "mean": 13.89,
+    "p95": 15.16
+   },
+   "main_work_ms": {
+    "mean": 5.86,
+    "p95": 6.57
+   },
+   "main_wait_ms": {
+    "mean": 8.03,
+    "p95": 9.0
+   },
+   "render_work_ms": {
+    "mean": 3.78,
+    "p95": 4.34
+   },
+   "render_wait_ms": {
+    "mean": 10.12,
+    "p95": 11.45
+   },
+   "draw_calls": {
+    "mean": 715.59,
+    "p95": 787.0
+   },
+   "setpass": {
+    "mean": 23.19,
+    "p95": 27.0
+   },
+   "batches": {
+    "mean": 574.8,
+    "p95": 619.0
+   },
+   "shadow_casters": {
+    "mean": 226.13,
+    "p95": 239.0
+   }
+  }
+ }
+}

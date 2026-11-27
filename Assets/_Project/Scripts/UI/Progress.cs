@@ -8,7 +8,11 @@ namespace SliceAndSell
     {
         public static int BestStars(int level) => PlayerPrefs.GetInt("bestStars" + level, 0);
         public static bool Won(int level) => PlayerPrefs.GetInt("won" + level, 0) == 1;
-        public static bool Unlocked(int level) => level == 0 || Won(level - 1);
+        public static bool Unlocked(int level) => level == 0 || Won(level - 1) || DevUnlockAll;
+
+        // Performance measuring: in a Development build on the device every level is open, so Level 3 can be started
+        // straight from Level select. Never in a release build or the Editor (tests check the real locking).
+        public static bool DevUnlockAll => Debug.isDebugBuild && !Application.isEditor;
 
         public static void Record(int level, bool won, int stars)
         {

@@ -1,0 +1,57 @@
+{
+  "run": "A-current",
+  "label": "route 3",
+  "frames": 15479,
+  "duration_s": 215.1,
+  "avg_fps": 72.0,
+  "one_percent_low_fps": 69.7,
+  "frame_ms_median": 13.89,
+  "budget_ms": 13.9,
+  "missed_frames": 5,
+  "missed_pct": 0.03,
+  "main_ms": {
+    "mean": 13.64,
+    "median": 13.66,
+    "p95": 15.29,
+    "n": 15467
+  },
+  "main_wait_ms": {
+    "mean": 0.01,
+    "median": 0.01,
+    "p95": 0.01,
+    "n": 15467
+  },
+  "render_ms": null,
+  "gpu_ms": null,
+  "draw_calls": {
+    "mean": 616.0,
+    "min": 245,
+    "max": 726
+  },
+  "setpass": {
+    "mean": 61.0,
+    "min": 22,
+    "max": 74
+  },
+  "batches": {
+    "mean": 437.6,
+    "min": 226,
+    "max": 538
+  },
+  "shadow_casters": {
+    "mean": 117.0,
+    "min": 85,
+    "max": 160
+  },
+  "triangles": {
+    "mean": 159596.6,
+    "min": 69655,
+    "max": 177082
+  },
+  "vrapi_app_gpu_ms": {
+    "mean": 7.35,
+    "median": 7.38,
+    "n": 249
+  },
+  "vrapi_fps_mean": 72.5
+}

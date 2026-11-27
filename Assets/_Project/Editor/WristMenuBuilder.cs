@@ -3,45 +3,53 @@ using TMPro;
 using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.XR.Interaction.Toolkit.Inputs;
 
-// Builds the wrist menu (GDD > 3D UI) and the hand-loss pause card (GDD > Failure cases) into the open scene,
-// which must already hold the XR rig. Called from StallBuilder.
+// Builds the in-game menu (GDD > 3D UI), the MENU sign that opens it and the hand-loss pause card
+// (GDD > Failure cases) into the open scene, which must already hold the XR rig. Called from StallBuilder.
 public static class WristMenuBuilder
 {
     static readonly Color DarkWood = new Color(0.28f, 0.17f, 0.09f);
 
-    public static WristMenu Build(Transform parentForMenu, OrderManager orders)
+    // The MENU sign: on the deck's free front-right corner (in front of the skewer cup, right of the Eto's blade),
+    // tilted back 45 degrees toward the eyes, within a short reach for a poke, and in the stall so seated mode lowers it.
+    static readonly Vector3 SignPos = new Vector3(0.585f, 0.93f, 0.31f);
+    static readonly Quaternion SignTilt = Quaternion.Euler(45f, 0f, 0f);
+
+    public static WristMenu Build(Transform parentForMenu, Transform stall, OrderManager orders)
     {
         var origin = Object.FindAnyObjectByType<XROrigin>();
-        var modality = Object.FindAnyObjectByType<XRInputModalityManager>();
 
         var menu = new GameObject("Wrist Menu").AddComponent<WristMenu>();
         menu.transform.SetParent(parentForMenu, false);
         menu.orders = orders;
         menu.origin = origin.transform;
         menu.head = origin.Camera.transform;
-        menu.leftController = modality ? modality.leftController : null;
 
-        // Fruit crate, 200 x 320 mm: dark frame, wood board, slats between the rows.
+        // Fruit crate, 200 x 376 mm: dark frame, wood board, slats between the rows.
         // Two columns of 80 mm buttons at x = ±48 (16 mm gap); rows every 56 mm (40 mm button + 16 mm gap).
-        var panel = UiKit.Panel("Crate panel", menu.transform, Vector3.zero, Quaternion.identity, new Vector2(200, 320), UiKit.Wood);
-        foreach (float y in new[] { 68f, 12f, -44f, -100f }) Rect(panel, new Vector2(0, y), new Vector2(176, 3), DarkWood);
-        UiKit.Label(panel, "Menu", new Vector2(0, 136), new Vector2(176, 24), UiKit.TitleSize, UiKit.Cream, style: FontStyles.Bold);
+        var panel = UiKit.Panel("Crate panel", menu.transform, Vector3.zero, Quaternion.identity, new Vector2(200, 376), UiKit.Wood);
+        foreach (float y in new[] { 96f, 40f, -16f, -72f, -128f }) Rect(panel, new Vector2(0, y), new Vector2(176, 3), DarkWood);
+        menu.titleLabel = UiKit.Label(panel, "Menu", new Vector2(0, 164), new Vector2(176, 24), UiKit.TitleSize, UiKit.Cream, style: FontStyles.Bold);
 
         var button = new Vector2(80, 40);
-        menu.pauseLabel = Text(UiKit.Button(panel, "Pause", new Vector2(-48, 96), button, menu.TogglePause));
-        UiKit.Button(panel, "Restart", new Vector2(48, 96), button, menu.Restart);
-        menu.stanceLabel = Text(UiKit.Button(panel, "Standing", new Vector2(-48, 40), button, menu.ToggleSeated));
-        UiKit.Button(panel, "Recenter", new Vector2(48, 40), button, menu.Recenter);
-        menu.dwellLabel = Text(UiKit.Button(panel, "Dwell to press: Off", new Vector2(0, -16), new Vector2(176, 40), menu.ToggleDwell));
-        UiKit.Button(panel, "-", new Vector2(-68, -72), new Vector2(40, 40), menu.VolumeDown);
-        menu.volumeLabel = UiKit.Label(panel, "Volume\n100%", new Vector2(0, -72), new Vector2(64, 40), UiKit.BodySize, UiKit.Cream);
-        UiKit.Button(panel, "+", new Vector2(68, -72), new Vector2(40, 40), menu.VolumeUp);
-        UiKit.Button(panel, "Exit to menu", new Vector2(0, -128), new Vector2(176, 40), menu.ExitToMenu);
+        menu.pauseLabel = Text(UiKit.Button(panel, "Pause", new Vector2(-48, 124), button, menu.TogglePause, primary: true));
+        menu.closeButton = UiKit.Button(panel, "Close", new Vector2(48, 124), button, menu.Close);
+        UiKit.Button(panel, "Restart", new Vector2(-48, 68), button, menu.Restart);
+        UiKit.Button(panel, "Recenter", new Vector2(48, 68), button, menu.Recenter);
+        menu.stanceLabel = Text(UiKit.Button(panel, "Standing", new Vector2(0, 12), new Vector2(176, 40), menu.ToggleSeated));
+        menu.dwellLabel = Text(UiKit.Button(panel, "Dwell to press: Off", new Vector2(0, -44), new Vector2(176, 40), menu.ToggleDwell));
+        UiKit.Button(panel, "-", new Vector2(-68, -100), new Vector2(40, 40), menu.VolumeDown);
+        menu.volumeLabel = UiKit.Label(panel, "Volume\n100%", new Vector2(0, -100), new Vector2(64, 40), UiKit.BodySize, UiKit.Cream);
+        UiKit.Button(panel, "+", new Vector2(68, -100), new Vector2(40, 40), menu.VolumeUp);
+        UiKit.Button(panel, "Exit to menu", new Vector2(0, -156), new Vector2(176, 40), menu.ExitToMenu);
         menu.panel = panel;
         UiKit.CheckSizes(panel);
         panel.gameObject.SetActive(false);                  // WristMenu shows it
+
+        // The MENU sign: one big orange button on a small wooden card.
+        var sign = UiKit.Panel("Menu sign", stall, stall.TransformPoint(SignPos), stall.rotation * SignTilt, new Vector2(110, 60), UiKit.Wood);
+        UiKit.Button(sign, "MENU", Vector2.zero, new Vector2(94, 44), menu.Toggle, primary: true);
+        UiKit.CheckSizes(sign);
 
         // Hand-loss pause: the card is placed 1 m in front of the eyes when it appears.
         var loss = new GameObject("Hand Loss Pause").AddComponent<HandLossPause>();

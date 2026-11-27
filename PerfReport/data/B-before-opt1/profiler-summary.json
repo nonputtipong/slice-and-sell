@@ -1,0 +1,39 @@
+{
+ "frames": 2000,
+ "frame_ms": {
+  "mean": 13.89,
+  "p95": 15.18
+ },
+ "main_work_ms": {
+  "mean": 5.78,
+  "p95": 6.58
+ },
+ "main_wait_ms": {
+  "mean": 8.11,
+  "p95": 9.02
+ },
+ "render_work_ms": {
+  "mean": 4.06,
+  "p95": 4.56
+ },
+ "render_wait_ms": {
+  "mean": 9.83,
+  "p95": 11.01
+ },
+ "draw_calls": {
+  "mean": 598.63,
+  "p95": 636.0
+ },
+ "setpass": {
+  "mean": 55.72,
+  "p95": 63.0
+ },
+ "batches": {
+  "mean": 416.37,
+  "p95": 451.0
+ },
+ "shadow_casters": {
+  "mean": 102.98,
+  "p95": 114.0
+ }
+}
