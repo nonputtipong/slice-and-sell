@@ -14,16 +14,21 @@ namespace SliceAndSell
         public GameObject filledVisual;             // fallback heap, shown only if the fruit has no slices to copy
         public GameObject skewerVisual, chiliVisual;
 
-        // The Blender bowl (Ø 15 cm, 6.5 cm tall); the prefab root is its middle, so the foot is at y -0.0325.
-        public const float FootY = -0.0325f;
+        // The Blender bowl (Ø 15 cm, 6.5 cm tall) shown 1.3× (playtest 5: Ø 19.5 cm, 8.45 cm tall). The prefab root is
+        // its middle, so the foot is at -HalfHeight. Everything below is in metres of the scaled bowl.
+        public const float Size = 1.3f;
+        public const float HalfHeight = 0.0325f * Size, FootY = -HalfHeight;
+        public const float FloorHeight = 0.009f * Size, RimHeight = 0.065f * Size, RimRadius = 0.0705f * Size;
 
-        // Inside radius of the bowl at height h above its foot (m), from the Bowl.glb profile: the inner floor is flat
-        // to r 3.6 cm at 9 mm, the wall climbs to r 6.6 cm at 4.5 cm and to r 7.05 cm at the rim (6.5 cm).
+        // Inside radius at height h above the foot, from the Bowl.glb profile (unscaled: floor flat to r 3.6 cm at
+        // 9 mm, wall to r 6.6 cm at 4.5 cm and r 7.05 cm at the rim, 6.5 cm), scaled by Size.
         public static float InnerRadius(float h)
         {
-            if (h <= 0.009f) return 0.036f;
-            if (h <= 0.045f) return 0.036f + (h - 0.009f) * (0.03f / 0.036f);
-            return Mathf.Min(0.0705f, 0.066f + (h - 0.045f) * (0.0045f / 0.02f));
+            h /= Size;
+            float r = h <= 0.009f ? 0.036f
+                    : h <= 0.045f ? 0.036f + (h - 0.009f) * (0.03f / 0.036f)
+                    : Mathf.Min(0.0705f, 0.066f + (h - 0.045f) * (0.0045f / 0.02f));
+            return r * Size;
         }
 
         public string Contents { get; private set; }
@@ -34,8 +39,11 @@ namespace SliceAndSell
         public Transform Slices { get; private set; }   // the copied slices (null until filled, or for a fruit without stages)
         public bool Settled { get; private set; }       // the slices have fallen into place (the frame after Fill)
 
-        float heapTop = 0.032f;                         // where the chilli sits: on the slices once there are some
+        float heapTop = 0.032f * Size;                  // where the chilli sits: on the slices once there are some
         Vector3[] boxCentres, boxSizes;                 // each slice's mesh bounds (its physics box while settling)
+        Quaternion[] flat;                              // each slice lying on its thinnest side, fanned (its fallback pose)
+
+        public static float LastSettleMs { get; private set; }   // how long the last fill's settling took (logged)
 
         public void Fill(Fruit fruit)
         {
@@ -60,7 +68,7 @@ namespace SliceAndSell
 
         void PlaceChili()
         {
-            if (chiliVisual) chiliVisual.transform.localPosition = new Vector3(-0.015f, heapTop, 0.01f);
+            if (chiliVisual) chiliVisual.transform.localPosition = new Vector3(-0.015f * Size, heapTop, 0.01f * Size);
         }
 
         // Returns false if the bowl already has one (the extra is then left alone).
@@ -87,6 +95,7 @@ namespace SliceAndSell
             root.SetParent(transform, false);
             boxCentres = new Vector3[pieces.Length];
             boxSizes = new Vector3[pieces.Length];
+            flat = new Quaternion[pieces.Length];
             for (int i = 0; i < pieces.Length; i++)
             {
                 var src = pieces[i];
@@ -94,10 +103,11 @@ namespace SliceAndSell
                 var scale = src.transform.lossyScale;                       // real size, never shrunk
                 var s = Vector3.Scale(b.size, scale);
                 var up = s.x <= s.y && s.x <= s.z ? Vector3.right : s.z <= s.y ? Vector3.forward : Vector3.up;
+                flat[i] = Quaternion.Euler(0f, i * 137.5f, 0f) * Quaternion.FromToRotation(up, Vector3.up);
                 var rot = Quaternion.Euler(0f, i * 137.5f, 0f) * Quaternion.Euler(i % 2 == 0 ? 10f : -10f, 0f, 0f) * Quaternion.FromToRotation(up, Vector3.up);
                 float lift = Mathf.Abs((rot * s).y);
                 var centre = Quaternion.Euler(0f, i * 137.5f, 0f) * new Vector3(0f, 0f, pieces.Length > 1 ? 0.012f : 0f)
-                             + Vector3.up * (FootY + 0.075f + i * 0.05f + lift * 0.5f);     // dropped one after another, just over the rim
+                             + Vector3.up * (FootY + RimHeight + 0.01f + i * 0.05f + lift * 0.5f);   // dropped one after another, just over the rim
 
                 var go = new GameObject(src.name);
                 var t = go.transform;
@@ -131,10 +141,10 @@ namespace SliceAndSell
             settlePhysics = settleScene.GetPhysicsScene();
             var shape = new GameObject("Bowl inside");
             SceneManager.MoveGameObjectToScene(shape, settleScene);
-            AddBox(shape, new Vector3(0f, FootY + 0.009f - 0.005f, 0f), Quaternion.identity, new Vector3(0.1f, 0.01f, 0.1f));   // inner floor
-            AddBox(shape, new Vector3(0f, FootY - 0.005f, 0f), Quaternion.identity, new Vector3(1f, 0.01f, 1f));              // the table
-            Band(shape, 0.036f, 0.009f, 0.066f, 0.045f);                                                                      // lower wall
-            Band(shape, 0.066f, 0.045f, 0.0705f, 0.066f);                                                                     // up to the rim
+            AddBox(shape, new Vector3(0f, FootY + FloorHeight - 0.005f, 0f), Quaternion.identity, new Vector3(0.1f, 0.01f, 0.1f) * Size);   // inner floor
+            AddBox(shape, new Vector3(0f, FootY - 0.005f, 0f), Quaternion.identity, new Vector3(1f, 0.01f, 1f));                          // the table
+            Band(shape, 0.036f * Size, 0.009f * Size, 0.066f * Size, 0.045f * Size);                                                      // lower wall
+            Band(shape, 0.066f * Size, 0.045f * Size, RimRadius, RimHeight + 0.001f);                                                     // up to the rim
         }
 
         // A ring of boxes whose inner faces follow the bowl's wall from (r0, h0) to (r1, h1), heights above the foot.
@@ -165,6 +175,7 @@ namespace SliceAndSell
         // Drops a box per slice (the slice's mesh bounds) into the hidden bowl, steps physics, copies the resting poses.
         void Settle()
         {
+            var clock = System.Diagnostics.Stopwatch.StartNew();
             EnsureSettleScene();
             var slices = Slices.Cast<Transform>().ToArray();
             var bodies = new Transform[slices.Length];
@@ -183,15 +194,18 @@ namespace SliceAndSell
             }
             for (int s = 0; s < Steps; s++) settlePhysics.Simulate(Step);
 
-            heapTop = 0.032f;
+            heapTop = 0.032f * Size;
             for (int i = 0; i < slices.Length; i++)
             {
                 var p = bodies[i].position; var r = bodies[i].rotation;
-                // A slice that slid off onto the table goes back on top, lying flat over the middle.
-                if (new Vector2(p.x, p.z).magnitude > 0.09f || p.y < FootY + 0.004f)
+                // Judged by the slice's centre (its box centre), not its pivot: piece meshes are modelled off their origin.
+                var centre = bodies[i].TransformPoint(boxCentres[i]);
+                // A slice that slid off onto the table goes back on top, lying flat on its thinnest side over the middle.
+                if (new Vector2(centre.x, centre.z).magnitude > RimRadius * 1.3f || centre.y < FootY + 0.004f)
                 {
-                    r = Quaternion.FromToRotation(r * Vector3.up, Vector3.up) * r;
-                    p = new Vector3(0f, heapTop + 0.015f, 0f) - r * Vector3.Scale(boxCentres[i], slices[i].localScale);
+                    r = flat[i];
+                    float half = Mathf.Abs((r * Vector3.Scale(boxSizes[i], slices[i].localScale)).y) * 0.5f;
+                    p = new Vector3(0f, heapTop + half, 0f) - r * Vector3.Scale(boxCentres[i], slices[i].localScale);
                 }
                 slices[i].localPosition = p; slices[i].localRotation = r;
                 var top = slices[i].GetComponent<MeshRenderer>().bounds.max;
@@ -199,6 +213,8 @@ namespace SliceAndSell
                 bodies[i].gameObject.SetActive(false);
                 Destroy(bodies[i].gameObject);
             }
+            LastSettleMs = (float)clock.Elapsed.TotalMilliseconds;
+            Debug.Log($"[Bowl] {Contents}: {slices.Length} slices settled in {LastSettleMs:0.00} ms ({Steps} steps)");   // read on the Quest with adb logcat
         }
     }
 }

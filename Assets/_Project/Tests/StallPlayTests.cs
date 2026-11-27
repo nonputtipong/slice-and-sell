@@ -242,42 +242,47 @@ namespace SliceAndSell.Tests
             Object.Destroy(hand);
         }
 
-        // Item 1 of the Quest playtest: every bin makes a new item when the waiting one is grabbed, knocked out of the
-        // bin, or destroyed without a grab. And it does not make extra ones while the first just settles.
+        // Playtest 5 (replaces "a new item as soon as one is taken", which cluttered the counter): a bin makes its next
+        // item only once the last one is used up or despawned, never while it is held, carried or knocked about. And it
+        // does not make extra ones while the first just settles.
         [UnityTest]
-        public IEnumerator EveryBinKeepsOneItemWaiting()
+        public IEnumerator EveryBinRefillsOnlyWhenItsItemIsUsedUp()
         {
             var bins = Object.FindObjectsByType<Dispenser>(FindObjectsSortMode.None);
-            Assert.GreaterOrEqual(bins.Length, 7, "4 fruit crates, bowls, skewers, chilies");
+            Assert.AreEqual(7, bins.Length, "4 fruit crates, bowls, skewers, chilies");
+            Assert.IsTrue(bins.All(d => d.onlyWhenGone), "every bin waits for its item to be used up");
             var first = bins.Select(d => d.Current).ToArray();
             yield return new WaitForSeconds(2f);
             for (int i = 0; i < bins.Length; i++)
                 Assert.AreSame(first[i], bins[i].Current, $"{bins[i].name}: the item settled in its bin, no respawn");
 
-            // Knocked out of the bin (not grabbed). The bowl spot is not a bin: it refills only when its bowl is gone
-            // (BowlSpotRefillsOnlyWhenTheBowlIsGone), so the knock and grab checks leave it out.
+            // Knocked out of the bin (not grabbed): no new one, so nothing piles up on the counter. The bowl spot is a
+            // socket (it holds its bowl, and snaps it back): BowlSpotRefillsOnlyWhenTheBowlIsGone covers it, so the
+            // knock and Waiting checks leave it out.
             var all = bins;
-            bins = all.Where(d => !d.onlyWhenGone).ToArray();
+            bins = all.Where(d => !d.prefab.GetComponent<Bowl>()).ToArray();
             first = bins.Select(d => d.Current).ToArray();
             foreach (var d in bins) { var rb = d.Current.GetComponent<Rigidbody>(); rb.isKinematic = true; d.Current.transform.position += new Vector3(0, 0.3f, 0); }
-            yield return new WaitForSeconds(0.6f);
+            yield return new WaitForSeconds(0.8f);
             for (int i = 0; i < bins.Length; i++)
             {
-                Assert.IsNotNull(bins[i].Current, $"{bins[i].name}: a new item after a knock");
-                Assert.AreNotSame(first[i], bins[i].Current, $"{bins[i].name}: a new one, not the knocked one");
-                Object.Destroy(first[i].gameObject);
+                Assert.AreSame(first[i], bins[i].Current, $"{bins[i].name}: no new item while the knocked one is still around");
+                Assert.IsFalse(bins[i].Waiting, $"{bins[i].name}: and nothing waits in the bin (a thief finds none)");
             }
 
-            // Used up or despawned without a grab (the bowl spot too).
-            bins = all;
-            var second = bins.Select(d => d.Current).ToArray();
-            foreach (var g in second) Object.Destroy(g.gameObject);
+            // Used up or despawned: a new one.
+            foreach (var g in first) Object.Destroy(g.gameObject);
             yield return new WaitForSeconds(0.6f);
+            var second = bins.Select(d => d.Current).ToArray();
             for (int i = 0; i < bins.Length; i++)
-                Assert.IsTrue(bins[i].Current != null && bins[i].Current != second[i], $"{bins[i].name}: a new item after a destroy");
+            {
+                Assert.IsTrue(second[i] != null && second[i] != first[i], $"{bins[i].name}: a new item once the old one is gone");
+                Assert.IsTrue(bins[i].Waiting, $"{bins[i].name}: waiting in the bin");
+            }
 
-            // Grabbed.
-            bins = all.Where(d => !d.onlyWhenGone).ToArray();
+            // Grabbed and carried away: still no new one until it is used up (the bowl too, lifted off its spot).
+            bins = all;
+            board.scoopSocket.socketActive = false;
             var hand = new GameObject("Test hand"); hand.AddComponent<SphereCollider>().isTrigger = true;
             var direct = hand.AddComponent<XRDirectInteractor>();
             foreach (var d in bins)
@@ -286,15 +291,17 @@ namespace SliceAndSell.Tests
                 hand.transform.position = taken.transform.position;
                 yield return null;
                 direct.StartManualInteraction((UnityEngine.XR.Interaction.Toolkit.Interactables.IXRSelectInteractable)taken);
-                yield return new WaitForSeconds(0.5f);
-                Assert.IsNull(d.Current, $"{d.name}: nothing new spawns inside the item still held over the bin");
+                yield return null;
                 hand.transform.position += new Vector3(0f, 0.3f, -0.2f);       // carried away
-                yield return new WaitForSeconds(0.5f);
-                Assert.IsTrue(d.Current != null && d.Current != taken, $"{d.name}: a new item once the grabbed one has left");
+                yield return new WaitForSeconds(0.6f);
+                Assert.AreSame(taken, d.Current, $"{d.name}: no new item while the taken one is held");
                 direct.EndManualInteraction();
                 yield return null;
                 Object.Destroy(taken.gameObject);
+                yield return new WaitForSeconds(0.5f);
+                Assert.IsTrue(d.Current != null && d.Current != taken, $"{d.name}: a new item once the taken one is used up");
             }
+            board.scoopSocket.socketActive = true;
             Object.Destroy(hand);
         }
 

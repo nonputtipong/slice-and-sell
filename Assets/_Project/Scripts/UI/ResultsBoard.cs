@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace SliceAndSell
 {
     // End-of-shift results (GDD > world-space displays): saves progress, shows earnings vs target and stars.
-    // It hangs in front of the order card while shown. Lives on an always-active object; `board` is the canvas.
+    // It hangs over the counter, in front of the order bubble's resting spot, while shown. Lives on an always-active object; `board` is the canvas.
     public class ResultsBoard : MonoBehaviour
     {
         public OrderManager orders;

@@ -7,7 +7,7 @@ using UnityEngine.TestTools;
 
 namespace SliceAndSell.Tests
 {
-    // Playtest 3: the fruit thief, the pistol that stops him, and thrown things hitting people. No scene: an OrderManager with one level and the
+    // Playtest 3-5: the fruit thief, the pistol and knife that stop him, and thrown things hitting people. No scene: an OrderManager with one level and the
     // real customer prefab, a real knife and guava thrown at them.
     public class ThiefTests
     {
@@ -39,7 +39,6 @@ namespace SliceAndSell.Tests
             Object.Destroy(orders.gameObject); Object.Destroy(level);
             foreach (var k in Object.FindObjectsByType<Knife>(FindObjectsSortMode.None)) Object.Destroy(k.gameObject);
             foreach (var f in Object.FindObjectsByType<Fruit>(FindObjectsSortMode.None)) Object.Destroy(f.gameObject);
-            foreach (var m in Object.FindObjectsByType<Magazine>(FindObjectsSortMode.None)) Object.Destroy(m.gameObject);
             foreach (var p in Object.FindObjectsByType<Pistol>(FindObjectsSortMode.None)) Object.Destroy(p.gameObject);
             foreach (var b in Object.FindObjectsByType<Bullet>(FindObjectsSortMode.None)) Object.Destroy(b.gameObject);
         }
@@ -79,28 +78,48 @@ namespace SliceAndSell.Tests
             return go.GetComponent<Pistol>();
         }
 
-        // Pushes a magazine into the bottom of the grip, as a hand would.
-        static IEnumerator Load(Pistol p)
-        {
-            var mag = Object.Instantiate(Prefab("Magazine"), p.magSocket.transform.position, p.transform.rotation);
-            var rb = mag.GetComponent<Rigidbody>(); rb.isKinematic = true;
-            for (int i = 0; i < 10 && !p.Mag; i++) yield return new WaitForFixedUpdate();
-            yield return null;
-            Assert.IsNotNull(p.Mag, "the magazine clicks into the grip");
-        }
-
+        // Playtest 5: no magazine to load; it fires straight away, with a short cooldown between shots.
         [UnityTest]
-        public IEnumerator PistolOnlyFiresWithAMagazine()
+        public IEnumerator PistolFiresWithoutAMagazine()
         {
             var p = PistolAt(new Vector3(20, 1.2f, 0), new Vector3(20, 1.2f, 10));
             yield return null;
-            Assert.IsFalse(p.Fire(), "no magazine: a dry click");
-            Assert.AreEqual(Pistol.DryAmplitude, p.LastHaptic, 1e-4f, "a faint tick in the hand");
-            yield return Load(p);
-            Assert.IsTrue(p.Fire());
-            Assert.AreEqual(Magazine.Capacity - 1, p.Mag.rounds);
+            Assert.IsTrue(p.Fire(), "it just fires");
             Assert.AreEqual(Pistol.ShotAmplitude, p.LastHaptic, 1e-4f, "a kick on every shot");
+            Assert.IsFalse(p.Fire(), "not again within the cooldown");
+            yield return new WaitForSeconds(Pistol.Cooldown + 0.05f);
+            Assert.IsTrue(p.Fire(), "and again after it");
+            Assert.AreEqual(2, p.Shots);
+            Assert.IsNull(p.transform.Find("Magazine socket"), "no magazine socket left on the gun");
             Object.Destroy(p.gameObject);
+        }
+
+        // Hands: keeping a thief in the aim cone for AimSeconds fires once, then it re-arms.
+        [UnityTest]
+        public IEnumerator HandAimAtTheThiefFires()
+        {
+            yield return null;
+            var thief = StandingThief(tough: true);
+            yield return null; yield return null;
+            var chest = Bullet.AimPoint(thief);
+            var p = PistolAt(chest + new Vector3(0f, 0f, -4f), chest, offDegrees: 10f);
+            yield return null;
+            const float dt = 0.125f;                        // sums to AimSeconds exactly
+            for (float t = dt; t < Pistol.AimSeconds - 0.01f; t += dt) Assert.IsFalse(p.AimToShoot(dt), "not before the dwell");
+            Assert.IsTrue(p.AimToShoot(dt), "held on him for the dwell: it fires");
+            Assert.IsFalse(p.AimToShoot(dt), "then it re-arms first");
+            var away = PistolAt(new Vector3(20, 1.2f, 0), new Vector3(20, 1.2f, 10));
+            yield return null;
+            for (int i = 0; i < 40; i++) Assert.IsFalse(away.AimToShoot(dt), "no thief in the cone: nothing");
+            Object.Destroy(p.gameObject); Object.Destroy(away.gameObject);
+        }
+
+        [Test]
+        public void IndexBendIsMeasuredAtTheKnuckles()
+        {
+            Assert.AreEqual(0f, Pistol.IndexBend(Vector3.zero, Vector3.forward, Vector3.forward * 2, Vector3.forward * 3), 1e-3f, "straight");
+            var bent = Pistol.IndexBend(Vector3.zero, Vector3.forward, Vector3.forward + Vector3.down * 0.7f + Vector3.forward * 0.7f, Vector3.forward + Vector3.down * 1.4f);
+            Assert.Greater(bent, Pistol.CurlFireDegrees, "a curled index fires");
         }
 
         [UnityTest]
@@ -111,24 +130,33 @@ namespace SliceAndSell.Tests
             yield return null; yield return null;
             var chest = Bullet.AimPoint(thief);
             var p = PistolAt(chest + new Vector3(0f, 0f, -4f), chest, offDegrees: 15f);     // a sloppy aim, inside the cone
-            yield return Load(p);
+            yield return null;
             int before = orders.Money;
             Assert.AreSame(thief, p.FindTarget(), "aim assist picks him");
             Assert.IsTrue(p.Fire());
             yield return Steps(0.6f);
             Assert.AreEqual(Thief.Phase.Caught, thief.State, "the round tracked him");
-            Assert.IsTrue(thief.Body.Dead, "he goes down");
-            Assert.IsFalse(thief.Body.anim.enabled, "the clip stops: physics has the bones");
-            var bodies = thief.GetComponentsInChildren<Rigidbody>().Where(r => !r.isKinematic).ToArray();
-            Assert.GreaterOrEqual(bodies.Length, 10, "a ragdoll");
-            var head = thief.GetComponentsInChildren<Transform>().First(t => t.name == "Head").GetComponent<SphereCollider>();
-            Assert.AreEqual(0.11f, head.radius * head.transform.lossyScale.x, 0.01f, "ragdoll parts are sized in metres");
+            AssertKnockedOut(thief);
             Assert.AreEqual(before + OrderManager.ThiefReward, orders.Money, "the reward, once");
-            Assert.AreEqual(1, p.Kills);
-            Assert.AreEqual(Pistol.KillAmplitude, p.LastHaptic, 1e-4f, "the hard buzz when he goes down");
-            Assert.Greater(Pistol.KillAmplitude, Pistol.ShotAmplitude);
-            Assert.IsTrue(thief.GetComponentsInChildren<Hitbox>().All(h => !h.GetComponent<Collider>().enabled), "no more hits");
+            Assert.AreEqual(1, p.Takedowns);
+            Assert.AreEqual(Pistol.TakedownAmplitude, p.LastHaptic, 1e-4f, "the hard buzz when he goes down");
+            Assert.Greater(Pistol.TakedownAmplitude, Pistol.ShotAmplitude);
+            yield return new WaitForSeconds(Customer.KnockOutSeconds + Customer.VanishSeconds);
+            Assert.IsTrue(thief == null, "then he is gone");
+            Assert.AreEqual(before + OrderManager.ThiefReward, orders.Money, "paid once");
             Object.Destroy(p.gameObject);
+        }
+
+        // Playtest 5 and review (a 13+ game): a cartoon knock-out, not a ragdoll. He tips over, stars circle, "KO!".
+        static void AssertKnockedOut(Thief thief)
+        {
+            Assert.IsTrue(thief.Body.Dead, "he goes down");
+            Assert.IsFalse(thief.Body.anim.enabled, "the clip stops");
+            Assert.AreEqual(0, thief.GetComponentsInChildren<Rigidbody>().Count(r => !r.isKinematic), "no ragdoll");
+            Assert.AreEqual(3, thief.Body.StarCount, "three stars circle over his head");
+            Assert.AreEqual("KO!", thief.Label);
+            Assert.Greater(Vector3.Angle(thief.transform.up, Vector3.up), 45f, "tipped over");
+            Assert.IsTrue(thief.GetComponentsInChildren<Hitbox>().All(h => !h.GetComponent<Collider>().enabled), "no more hits");
         }
 
         // Playtest 4: a tough thief ("THIEF!!") needs two shots; the first staggers him (a medium buzz), the second puts
@@ -142,7 +170,7 @@ namespace SliceAndSell.Tests
             Assert.IsTrue(thief.Tough); Assert.AreEqual(2, thief.Health);
             var chest = Bullet.AimPoint(thief);
             var p = PistolAt(chest + new Vector3(0f, 0f, -4f), chest);
-            yield return Load(p);
+            yield return null;
             int before = orders.Money;
             Assert.IsTrue(p.Fire());
             yield return Steps(0.5f);
@@ -153,9 +181,9 @@ namespace SliceAndSell.Tests
             Assert.IsTrue(p.Fire());
             yield return Steps(0.5f);
             Assert.IsTrue(thief.Body.Dead, "the second shot puts him down");
-            Assert.AreEqual(Pistol.KillAmplitude, p.LastHaptic, 1e-4f);
+            Assert.AreEqual(Pistol.TakedownAmplitude, p.LastHaptic, 1e-4f);
             Assert.AreEqual(before + OrderManager.ThiefReward, orders.Money, "paid once");
-            Assert.AreEqual(2, p.Hits); Assert.AreEqual(1, p.Kills);
+            Assert.AreEqual(2, p.Hits); Assert.AreEqual(1, p.Takedowns);
             Object.Destroy(p.gameObject);
         }
 
@@ -196,7 +224,7 @@ namespace SliceAndSell.Tests
             yield return null; yield return null;
             var chest = Bullet.AimPoint(thief);
             var p = PistolAt(chest + new Vector3(0f, 0f, -4f), chest, offDegrees: 60f);
-            yield return Load(p);
+            yield return null;
             Assert.IsNull(p.FindTarget(), "outside the aim cone");
             Assert.IsTrue(p.Fire());
             yield return Steps(1f);
@@ -204,31 +232,72 @@ namespace SliceAndSell.Tests
             Object.Destroy(p.gameObject);
         }
 
+        // Playtest 5: a thrown knife takes the thief down too (a tough one needs two), and pays once.
         [UnityTest]
-        public IEnumerator EmptyMagazineDropsOut()
-        {
-            var p = PistolAt(new Vector3(20, 1.2f, 0), new Vector3(20, 1.2f, 10));
-            yield return null;
-            yield return Load(p);
-            for (int i = 0; i < Magazine.Capacity; i++) Assert.IsTrue(p.Fire(), $"round {i + 1}");
-            yield return null; yield return null;
-            Assert.IsNull(p.Mag, "the empty magazine drops out of the grip");
-            Assert.IsFalse(p.Fire(), "then it clicks dry until a new one goes in");
-            yield return new WaitForSeconds(0.7f);
-            yield return Load(p);
-            Assert.IsTrue(p.Fire(), "a fresh magazine: it fires again");
-            Object.Destroy(p.gameObject);
-        }
-
-        [UnityTest]
-        public IEnumerator ThrownKnifeJustBouncesOffTheThief()
+        public IEnumerator ThrownKnifeTakesTheThiefDown()
         {
             yield return null;
             var thief = StandingThief();
             yield return null; yield return null;
+            int before = orders.Money;
             Throw("Knife", thief.transform.position + Vector3.up * 1.1f);
             yield return Steps();
-            Assert.IsFalse(thief.Body.Dead, "only the pistol stops him");
+            AssertKnockedOut(thief);
+            Assert.AreEqual(before + OrderManager.ThiefReward, orders.Money, "the reward, once");
+        }
+
+        // Playtest 5: a fast swing of a held knife through him is a slash; a slow touch is not.
+        [UnityTest]
+        public IEnumerator SlashWithAHeldKnifeTakesTheThiefDown()
+        {
+            yield return null;
+            var thief = StandingThief(tough: true);
+            yield return null; yield return null;
+            var go = Object.Instantiate(Prefab("Knife"), thief.transform.position + new Vector3(0f, 1.1f, -1f), Quaternion.identity);
+            var rack = go.GetComponent<ReturnToRack>(); if (rack) Object.DestroyImmediate(rack);
+            var rb = go.GetComponent<Rigidbody>(); rb.isKinematic = true; rb.useGravity = false;
+            var handGo = new GameObject("Hand");
+            handGo.transform.position = go.transform.position;
+            var trigger = handGo.AddComponent<SphereCollider>(); trigger.isTrigger = true; trigger.radius = 0.05f;
+            var hand = handGo.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactors.XRDirectInteractor>();
+            yield return null;
+            var grab = go.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
+            hand.StartManualInteraction((UnityEngine.XR.Interaction.Toolkit.Interactables.IXRSelectInteractable)grab);
+            for (int i = 0; i < 3; i++) yield return null;
+            Assert.IsTrue(grab.isSelected, "held");
+            // Slowly into him: nothing.
+            yield return MoveHand(hand, thief.transform.position + new Vector3(0f, 1.1f, -0.1f), 0.3f);
+            Assert.AreEqual(2, thief.Health, "a slow touch is no slash");
+            yield return MoveHand(hand, thief.transform.position + new Vector3(0f, 1.1f, -1f), 0.3f);
+            yield return new WaitForSeconds(0.6f);
+            // Two fast swings: the first staggers the tough thief, the second takes him down.
+            for (int swing = 0; swing < 2 && !thief.Body.Dead; swing++)
+            {
+                yield return MoveHand(hand, thief.transform.position + new Vector3(0f, 1.1f, 0.3f), 3f);
+                if (thief.Body.Dead) break;                              // check him before he vanishes
+                // A wound only slows him for Thief.SlowSeconds: hold him still, and bring the knife back over his head
+                // (not back through him) quickly, so the next swing lands before he would walk again.
+                thief.Body.SetSpeedScale(0f);
+                var at = thief.transform.position;
+                yield return MoveHand(hand, at + new Vector3(0f, 2.6f, 0.3f), 3f);
+                yield return MoveHand(hand, at + new Vector3(0f, 2.6f, -1f), 3f);
+                yield return MoveHand(hand, at + new Vector3(0f, 1.1f, -1f), 3f);
+                yield return new WaitForSeconds(0.2f);                   // past the one-hit-per-swing gate (0.5 s)
+            }
+            yield return Steps(Customer.FallSeconds + 0.2f);             // let him tip over (he vanishes at KnockOutSeconds)
+            AssertKnockedOut(thief);
+            hand.EndManualInteraction();
+            Object.Destroy(handGo); Object.Destroy(go);
+        }
+
+        // At a steady speed whatever the frame rate (batch-mode test frames can be very short).
+        static IEnumerator MoveHand(Component hand, Vector3 to, float metresPerSecond)
+        {
+            while ((hand.transform.position - to).sqrMagnitude > 1e-6f)
+            {
+                hand.transform.position = Vector3.MoveTowards(hand.transform.position, to, metresPerSecond * Mathf.Max(Time.deltaTime, 1e-4f));
+                yield return null;
+            }
         }
 
         [UnityTest]
@@ -252,7 +321,7 @@ namespace SliceAndSell.Tests
             yield return null;
             Throw("Knife", c.transform.position + Vector3.up * 1.1f);
             yield return Steps();
-            Assert.IsFalse(c.Dead, "customers aren't targets");
+            Assert.IsFalse(c.Dead, "customers aren't targets: a knife bounces off them");
             var fruit = Throw("Guava", HeadOf(c));
             yield return Steps();
             Assert.AreEqual(1, c.Splats, "but food in the face splats");
@@ -272,7 +341,7 @@ namespace SliceAndSell.Tests
             Assert.AreEqual(0, thief.Body.Splats, "too slow to count");
             var chest = Bullet.AimPoint(thief);
             var p = PistolAt(chest + new Vector3(0f, 0f, -4f), chest);
-            yield return Load(p);
+            yield return null;
             GamePause.Set(true);
             Assert.IsFalse(p.Fire(), "the pistol doesn't fire while paused");
             Throw("Guava", HeadOf(thief.Body));

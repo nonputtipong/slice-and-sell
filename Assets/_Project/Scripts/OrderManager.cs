@@ -56,7 +56,7 @@ namespace SliceAndSell
         public bool ShiftEnded => shiftEnded;
         public int ShiftId { get; private set; }          // +1 on every start / stop: a thief from an old shift leaves
 
-        // Thief (ThiefSpawner): knife him for the reward; he costs the penalty if he gets away with the fruit.
+        // Thief (ThiefSpawner): a takedown (pistol or knife) earns the reward; he costs the penalty if he gets away with the fruit.
         public const int ThiefReward = 30, ThiefPenalty = 10;
 
         readonly Scoring scoring = new Scoring();
@@ -177,11 +177,12 @@ namespace SliceAndSell
                 arriving = true;
                 // The one waiting in line steps up; otherwise someone walks in from the street.
                 if (queued) { present = queued; queued = null; }
-                else present = Instantiate(customerPrefabs[index % customerPrefabs.Length], customerEntry.position, Quaternion.identity, transform);
+                else { present = Instantiate(customerPrefabs[index % customerPrefabs.Length], customerEntry.position, Quaternion.identity, transform); present.Orders = this; }
                 present.Arrive(present.transform.position, counterSpot.position, OnArrived);
                 if (Level && Level.queue && queueSpot && (Level.customers == 0 || index + 1 < orders.Count))
                 {
                     queued = Instantiate(customerPrefabs[(index + 1) % customerPrefabs.Length], customerEntry.position, Quaternion.identity, transform);
+                    queued.Orders = this;
                     queued.Arrive(customerEntry.position, queueSpot.position, null);
                 }
                 Show("");
@@ -226,6 +227,8 @@ namespace SliceAndSell
 
         // A bowl thrown at a customer (Customer hitboxes): served only if that customer is the one waiting at the counter.
         public DeliveryResult DeliverTo(Customer customer, Bowl bowl) => customer && customer == present ? Deliver(bowl) : DeliveryResult.NoCustomer;
+
+        public Customer Present => present;     // the customer at (or walking to) the counter; null when none (OrderBubble)
 
         public DeliveryResult Deliver(Bowl bowl)
         {

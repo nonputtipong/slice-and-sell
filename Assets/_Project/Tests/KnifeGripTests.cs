@@ -6,11 +6,12 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.XR.Interaction.Toolkit.Inputs;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
 namespace SliceAndSell.Tests
 {
-    // M2: tracked hands hold the knife at their own grip point; controllers and sockets keep the normal one.
+    // M2 / playtest 5: the knife keeps the angle it was picked up at, with tracked hands and with controllers.
     public class KnifeGripTests
     {
         KnifeGrab knife;
@@ -30,15 +31,17 @@ namespace SliceAndSell.Tests
             root.GetComponentsInChildren<IXRSelectInteractor>(true)
                 .First(i => !(i is XRPokeInteractor) && !(i is XRSocketInteractor));
 
+        // Playtest 5: the knife and the Eto keep the angle they were picked up at (dynamic attach), with hands and
+        // controllers alike: no fixed hand grip overrides it.
         [UnityTest]
-        public IEnumerator HandsUseHandGripControllersUseNormalGrip()
+        public IEnumerator KnifeAndEtoKeepTheGrabbedAngle()
         {
-            Assert.IsNotNull(knife.handAttachTransform, "knife has a hand grip point");
+            Assert.IsTrue(knife.useDynamicAttach, "paring knife: dynamic attach");
+            var eto = Object.FindObjectsByType<Knife>(FindObjectsSortMode.None).Single(k => k.cleaver).GetComponent<XRGrabInteractable>();
+            Assert.IsTrue(eto.useDynamicAttach, "Eto: dynamic attach");
+            Assert.IsNull(knife.handAttachTransform, "no fixed hand grip");
             foreach (var hand in new[] { modality.leftHand, modality.rightHand })
-                Assert.AreSame(knife.handAttachTransform, knife.GetAttachTransform(GrabInteractor(hand)), hand.name);
-            foreach (var controller in new[] { modality.leftController, modality.rightController })
-                Assert.AreSame(knife.attachTransform, knife.GetAttachTransform(GrabInteractor(controller)), controller.name);
-            Assert.AreSame(knife.attachTransform, knife.GetAttachTransform(Object.FindAnyObjectByType<CuttingBoard>().fruitSocket), "socket");
+                Assert.IsNotNull(knife.GetAttachTransform(GrabInteractor(hand)), hand.name);
             yield break;
         }
     }

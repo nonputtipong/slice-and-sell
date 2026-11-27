@@ -47,8 +47,9 @@ public static class WristMenuBuilder
         panel.gameObject.SetActive(false);                  // WristMenu shows it
 
         // The MENU sign: one big orange button on a small wooden card.
-        var sign = UiKit.Panel("Menu sign", stall, stall.TransformPoint(SignPos), stall.rotation * SignTilt, new Vector2(110, 60), UiKit.Wood);
-        UiKit.Button(sign, "MENU", Vector2.zero, new Vector2(94, 44), menu.Toggle, primary: true);
+        // Playtest 5: bigger (was 110 x 60 mm), an easier poke for a tracked fingertip low on the deck.
+        var sign = UiKit.Panel("Menu sign", stall, stall.TransformPoint(SignPos), stall.rotation * SignTilt, new Vector2(140, 70), UiKit.Wood);
+        UiKit.Button(sign, "MENU", Vector2.zero, new Vector2(124, 54), menu.Toggle, primary: true);
         UiKit.CheckSizes(sign);
 
         // Hand-loss pause: the card is placed 1 m in front of the eyes when it appears.

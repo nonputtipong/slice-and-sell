@@ -6,8 +6,8 @@ namespace SliceAndSell
 {
     // The fruit thief: a customer model in dark clothes with "THIEF!" over his head. He walks down the soi to the
     // left side of the cart, takes a fruit from the nearest crate, and runs back up the street with it.
-    // Thrown food slows him (and splats his face); a pistol shot knocks him down (ragdoll) for the reward. A thrown
-    // knife just bounces off, like off anyone.
+    // Thrown food slows him (and splats his face); a pistol shot, a thrown knife or a knife slash knocks him out (a
+    // cartoon fall with stars, "KO!") for the reward.
     // If he reaches the end of the street with the fruit, the stall loses the penalty.
     // Playtest 4: thieves escape along different routes, and a tough one ("THIEF!!", bigger, dark red) takes two shots:
     // the first only staggers and slows him.
@@ -36,13 +36,15 @@ namespace SliceAndSell
         public bool Tough { get; private set; }
         public int Health { get; private set; } = 1;
         public const float WalkSpeed = 1.6f, RunSpeed = 2.6f, StealSeconds = 1.5f;
-        public const float SlowScale = 0.4f, SlowSeconds = 2.5f, KnockBack = 40f;
+        public const float SlowScale = 0.4f, SlowSeconds = 2.5f;
 
         public OrderManager orders;
         public Phase State { get; private set; }
         public Customer Body { get; private set; }
 
         GameObject loot;            // the stolen fruit, in his right hand
+        TMP_Text label;             // "THIEF!" over his head; "KO!" once he is down
+        public string Label => label ? label.text : null;
         float slowLeft, stealLeft;
 
         void Awake()
@@ -79,15 +81,17 @@ namespace SliceAndSell
         public void Begin(OrderManager o, Escape route, bool tough)
         {
             orders = o; shiftAtStart = o ? o.ShiftId : 0;
+            Body.Orders = o;                                        // its font for the KO stars (a thrown bowl never serves a thief)
             Route = route; Tough = tough; Health = tough ? 2 : 1;
             if (tough) transform.localScale = Vector3.one * 1.12f;
         }
 
         void Steal()
         {
-            // The fruit waiting in the nearest crate goes into his hand (the crate makes a new one, as when you take it).
+            // The fruit still waiting in the nearest crate goes into his hand (the crate makes a new one). Never one the
+            // player has taken out: with nothing in reach he runs off empty-handed, and that costs nothing.
             var crate = FindObjectsByType<Dispenser>(FindObjectsSortMode.None)
-                .Where(d => d.Current && d.prefab && d.prefab.GetComponent<Fruit>() && !d.Current.isSelected)
+                .Where(d => d.Waiting && d.prefab && d.prefab.GetComponent<Fruit>())
                 .OrderBy(d => (d.spawnPoint.position - transform.position).sqrMagnitude).FirstOrDefault();
             if (crate)
             {
@@ -123,13 +127,13 @@ namespace SliceAndSell
         void OnHit(Customer _, Rigidbody thrown, bool head, bool knife)
         {
             if (State == Phase.Caught || State == Phase.Gone) return;
-            if (knife) return;                                          // bounces off (Customer)
+            if (knife) return;                                          // Customer calls Shot for a knife
             slowLeft = SlowSeconds;                                     // food: slowed (Customer also splats the face)
             Body.SetSpeedScale(SlowScale);
         }
 
-        // A pistol round (Bullet). A tough thief's first hit only staggers and slows him (returns false); the last one
-        // puts him down as a ragdoll, thrown along the shot, and the stall gets the reward (returns true).
+        // A pistol round (Bullet), a thrown knife or a slash (Customer). A tough thief's first hit only staggers and slows
+        // him (returns false); the last one knocks him out, falling away along `direction`, and pays the reward (returns true).
         public bool Shot(Vector3 at, Vector3 direction)
         {
             if (State == Phase.Caught || State == Phase.Gone) return false;
@@ -142,7 +146,14 @@ namespace SliceAndSell
             }
             State = Phase.Caught;
             DropLoot();
-            Body.Die((direction.normalized + Vector3.up * 0.3f) * KnockBack, at);
+            Body.KnockOut(direction);
+            if (label)
+            {
+                // "KO!" stays upright where he stood (the body tips over); it goes when he does.
+                label.text = "KO!"; label.color = new Color(1f, 0.85f, 0.1f);
+                label.transform.SetParent(null, true);
+                Destroy(label.gameObject, Customer.KnockOutSeconds + Customer.VanishSeconds);
+            }
             if (orders) orders.ThiefCaught(transform.position + Vector3.up);
             return true;
         }
@@ -173,16 +184,17 @@ namespace SliceAndSell
                 if (m.HasProperty("baseColorFactor")) block.SetColor("baseColorFactor", dark);
                 r.SetPropertyBlock(block);
             }
-            var label = new GameObject("Thief label", typeof(RectTransform));
-            label.transform.SetParent(transform, false);
-            label.transform.localPosition = new Vector3(0f, 2.05f, 0f);
-            var t = label.AddComponent<TextMeshPro>();
+            var go = new GameObject("Thief label", typeof(RectTransform));
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = new Vector3(0f, 2.05f, 0f);
+            var t = go.AddComponent<TextMeshPro>();
+            this.label = t;
             if (orders && orders.orderCard) t.font = orders.orderCard.font;
             t.text = Tough ? "THIEF!!" : "THIEF!"; t.fontSize = 2.2f; t.fontStyle = FontStyles.Bold;
             t.color = new Color(0.95f, 0.15f, 0.1f); t.alignment = TextAlignmentOptions.Center;
             t.textWrappingMode = TextWrappingModes.NoWrap;
-            ((RectTransform)label.transform).sizeDelta = new Vector2(1f, 0.3f);
-            label.AddComponent<FaceCamera>();
+            ((RectTransform)go.transform).sizeDelta = new Vector2(1f, 0.3f);
+            go.AddComponent<FaceCamera>();
         }
     }
 }

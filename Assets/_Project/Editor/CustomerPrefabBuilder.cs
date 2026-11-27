@@ -13,7 +13,7 @@ public static class CustomerPrefabBuilder
     const string ModelDir = "Assets/_Project/ThirdParty/Polyfork/";
     const string OutDir = "Assets/_Project/Prefabs/Customers";
     const string RingMatPath = "Assets/_Project/Materials/PatienceRing.mat";
-    const float RingHeight = 1.95f;   // above the head (~1.70 m) and the order card (1.6–1.8 m)
+    const float RingHeight = 1.95f;   // above the head (~1.70 m); the order bubble floats beside the head, not over it
 
     static readonly (string file, string name)[] Models =
     {

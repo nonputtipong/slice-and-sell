@@ -12,8 +12,9 @@ namespace SliceAndSell
     // Kinematic (transform only, no physics/navmesh): it stops exactly at the spot it is given, so the
     // caller keeps that spot clear of the counter. Clips are legacy Animation (glTFast import), played by name.
     // Thrown things: two trigger hitboxes (head, body) made at start. Food in the face splats there and the customer
-    // shakes their head; a thrown knife just bounces off anyone. A Thief (same model, extra component) reacts instead:
-    // food slows him, and the pistol (Bullet) knocks him down (Die: ragdoll).
+    // shakes their head; a knife just bounces off a customer. A Thief (same model, extra component) reacts instead:
+    // food slows him, and the pistol (Bullet), a thrown knife or a slash with a held one knock him out (KnockOut: a
+    // cartoon fall with circling stars; playtest 5 and review: no ragdoll in a 13+ game).
     public class Customer : MonoBehaviour
     {
         public Animation anim;
@@ -22,9 +23,13 @@ namespace SliceAndSell
         public Transform head;    // nod / head-shake, layered on the clip in LateUpdate (every clip keys Head rotation)
         public float walkSpeed = 1.1f, turnSpeed = 360f;   // m/s, deg/s
 
-        public const float MinThrowSpeed = 1.5f;           // m/s: slower than this is a drop or a toss, not a throw
+        public const float MinThrowSpeed = 1.0f;           // m/s: slower than this is a drop or a toss, not a throw (1.5 was hard with hands)
+        public const float SlashSpeed = 1.0f;              // m/s: a held knife's edge this fast through a thief is a slash
+        public const float KnockOutSeconds = 2.5f, FallSeconds = 0.4f, VanishSeconds = 0.4f;
         public const float MinTossSpeed = 0.5f;            // m/s: a bowl tossed to the customer is enough to serve it
-        static OrderManager orders;
+        // The OrderManager that spawned this customer (set by it). Review: a global FindAnyObjectByType could return another
+        // manager (e.g. a stall scene still loaded next to a test's own), so a tossed bowl went unserved at random.
+        public OrderManager Orders { get; set; }
         const float Fade = 0.2f, ReactTime = 0.6f, ShakeTime = 0.6f;
         static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
@@ -230,9 +235,14 @@ namespace SliceAndSell
         {
             if (Dead || GamePause.Paused) return;
             var rb = other.attachedRigidbody;
-            if (!rb || rb.isKinematic) return;                                  // held items are kinematic
+            if (!rb) return;
             var grab = rb.GetComponent<XRGrabInteractable>();
-            if (grab && grab.isSelected) return;
+            var knifeTool = rb.GetComponent<Knife>();
+            var thief = GetComponent<Thief>();
+            bool held = grab && grab.isSelected;
+            // Playtest 5: a fast swing of a held knife (or Eto) through a thief takes him down, like a shot.
+            if (held && knifeTool && thief) { Slash(rb, knifeTool, grab, thief, other); return; }
+            if (rb.isKinematic || held) return;                                 // held items are kinematic
             var bowl = rb.GetComponent<Bowl>();
             // A bowl only needs a toss to be served; anything else must be thrown.
             if (rb.linearVelocity.magnitude < (bowl ? MinTossSpeed : MinThrowSpeed)) return;
@@ -243,15 +253,16 @@ namespace SliceAndSell
             // waiting at the counter is handed over, paid and used up exactly as on the HAND OVER tray.
             if (bowl && !GetComponent<Thief>())
             {
-                if (!orders) orders = FindAnyObjectByType<OrderManager>();
-                if (orders && orders.DeliverTo(this, bowl) != DeliveryResult.NoCustomer) { Destroy(bowl.gameObject); return; }
+                if (Orders && Orders.DeliverTo(this, bowl) != DeliveryResult.NoCustomer) { Destroy(bowl.gameObject); return; }
             }
 
-            bool knife = rb.GetComponent<Knife>();
+            bool knife = knifeTool;
             Hit?.Invoke(this, rb, isHead, knife);
             if (knife)
             {
-                rb.linearVelocity *= -0.2f;                                     // nobody is a knife target: it bounces off
+                // A thrown knife takes a thief down (a tough one needs two); customers aren't targets. It bounces off either way.
+                if (thief) thief.Shot(rb.position, rb.linearVelocity);
+                rb.linearVelocity *= -0.2f;
                 return;
             }
             if (isHead && SplatColour(rb.gameObject, out var colour)) Splat(rb, colour);
@@ -310,13 +321,27 @@ namespace SliceAndSell
             GameEvents.RaiseSplat(point, colour);
         }
 
+        void Slash(Rigidbody rb, Knife knife, XRGrabInteractable grab, Thief thief, Collider blade)
+        {
+            if (knife.Speed < SlashSpeed) return;
+            if (recentHits.TryGetValue(rb, out float at) && Time.time - at < 0.5f) return;   // one swing, one hit
+            recentHits[rb] = Time.time;
+            var point = blade.bounds.center;
+            var away = point - transform.position; away.y = 0f;
+            bool down = thief.Shot(point, -away);                          // he falls away from the player's side
+            Haptics.Pulse(grab, down ? Pistol.TakedownAmplitude : Pistol.WoundAmplitude, down ? Pistol.TakedownSeconds : Pistol.WoundSeconds);
+        }
+
         // A hit that doesn't put him down: the head jerks (same shake as a splat).
         public void Stagger() { if (!Dead) shake = ShakeTime; }
 
-        // ---------- death ----------
+        // ---------- knock-out ----------
 
-        // Ragdoll: the clip stops, the bones get bodies, and the hit throws him over. The body goes after a while.
-        public void Die(Vector3 push, Vector3 at)
+        public int StarCount { get; private set; }
+
+        // Cartoon knock-out: the clip stops, he tips over backwards (away from the hit) in FallSeconds, three yellow
+        // stars circle over his head, and after KnockOutSeconds he shrinks away and is gone.
+        public void KnockOut(Vector3 direction)
         {
             if (Dead) return;
             Dead = true;
@@ -326,16 +351,60 @@ namespace SliceAndSell
             SetPatience(0, false);
             if (headBox) headBox.enabled = false;
             if (bodyBox) bodyBox.enabled = false;
-            var bodies = Ragdoll.Build(model);
-            Rigidbody nearest = null; float best = float.MaxValue;
-            foreach (var rb in bodies)
+            var away = Vector3.ProjectOnPlane(direction, Vector3.up);
+            if (away.sqrMagnitude < 1e-4f) away = -transform.forward;
+            StartCoroutine(KnockOutRoutine(away.normalized));
+        }
+
+        IEnumerator KnockOutRoutine(Vector3 away)
+        {
+            var stars = MakeStars();
+            var axis = Vector3.Cross(Vector3.up, away);
+            var start = transform.rotation; var pivot = transform.position;
+            var scale = transform.localScale;
+            float t = 0f;
+            while (t < KnockOutSeconds + VanishSeconds)
             {
-                float d = (rb.worldCenterOfMass - at).sqrMagnitude;
-                if (d < best) { best = d; nearest = rb; }
+                float fall = Mathf.Clamp01(t / FallSeconds);
+                fall = 1f - (1f - fall) * (1f - fall);                          // ease out: a quick topple that lands
+                transform.rotation = Quaternion.AngleAxis(80f * fall, axis) * start;
+                transform.position = pivot;
+                if (t > KnockOutSeconds) transform.localScale = scale * Mathf.Max(0.01f, 1f - (t - KnockOutSeconds) / VanishSeconds);
+                var centre = (head ? head.position : transform.position + Vector3.up) + Vector3.up * 0.18f;
+                for (int i = 0; i < stars.Length; i++)
+                {
+                    float a = t * 4f + i * Mathf.PI * 2f / stars.Length;
+                    stars[i].position = centre + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 0.16f;
+                    var cam = Camera.main;
+                    stars[i].rotation = (cam ? Quaternion.LookRotation(stars[i].position - cam.transform.position) : Quaternion.identity)
+                                        * Quaternion.Euler(0f, 0f, t * 360f);   // facing the player, spinning
+                }
+                yield return null;
+                t += Dt;                                                        // paused: he stays down, stars still
             }
-            // Far more than a real round would do: it is a cartoon, he should go over.
-            if (nearest) nearest.AddForceAtPosition(push, at, ForceMode.Impulse);
-            Destroy(gameObject, 8f);
+            Destroy(gameObject);
+        }
+
+        // Three yellow cartoon stars ("*" glyphs in the stall's font, facing the player). Text, not a tinted copy of the
+        // model's textured material, so they read as stars.
+        Transform[] MakeStars()
+        {
+            var stars = new Transform[3];
+            for (int i = 0; i < stars.Length; i++)
+            {
+                var star = new GameObject("KO star", typeof(RectTransform));
+                star.transform.SetParent(transform, false);
+                var t = star.AddComponent<TMPro.TextMeshPro>();
+                if (Orders && Orders.orderCard) t.font = Orders.orderCard.font;
+                t.text = "*"; t.fontSize = 3f; t.fontStyle = TMPro.FontStyles.Bold;
+                t.color = new Color(1f, 0.85f, 0.1f); t.alignment = TMPro.TextAlignmentOptions.Center;
+                t.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+                ((RectTransform)star.transform).sizeDelta = new Vector2(0.2f, 0.2f);
+                star.transform.localScale = Vector3.one / Mathf.Max(1e-4f, transform.lossyScale.x);
+                stars[i] = star.transform;
+            }
+            StarCount = stars.Length;
+            return stars;
         }
     }
 }

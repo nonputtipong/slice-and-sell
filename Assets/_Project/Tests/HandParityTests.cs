@@ -18,7 +18,7 @@ namespace SliceAndSell.Tests
     {
         const string ScenePath = "Assets/_Project/Scenes/Stall.unity";
         XRInputModalityManager modality;
-        XRGrabInteractable fruit, knife, bowl;
+        XRGrabInteractable fruit, knife, bowl, pistol, eto;
         XRSimpleInteractable bell;
         CuttingBoard board;
         XRSocketInteractor tray;
@@ -32,6 +32,8 @@ namespace SliceAndSell.Tests
             board = Object.FindAnyObjectByType<CuttingBoard>();
             var knifeScript = Object.FindObjectsByType<Knife>(FindObjectsSortMode.None).Single(k => !k.cleaver);   // the paring knife, not the cleaver
             knife = knifeScript.GetComponent<XRGrabInteractable>();
+            eto = Object.FindObjectsByType<Knife>(FindObjectsSortMode.None).Single(k => k.cleaver).GetComponent<XRGrabInteractable>();
+            pistol = Object.FindAnyObjectByType<Pistol>().GetComponent<XRGrabInteractable>();
             var dispensers = Object.FindObjectsByType<Dispenser>(FindObjectsSortMode.None);
             fruit = dispensers.First(d => d.prefab.GetComponent<Fruit>()).Current;
             bowl = dispensers.First(d => d.prefab.GetComponent<Bowl>()).Current;
@@ -57,12 +59,33 @@ namespace SliceAndSell.Tests
                     .Where(i => !(i is XRPokeInteractor) && !(i is XRSocketInteractor)).ToArray();
                 var pokers = root.GetComponentsInChildren<XRPokeInteractor>(true);
 
-                foreach (var (item, target) in new (string, IXRInteractable)[] { ("fruit", fruit), ("knife", knife), ("bowl", bowl) })
+                foreach (var (item, target) in new (string, IXRInteractable)[] { ("fruit", fruit), ("knife", knife), ("bowl", bowl), ("Eto", eto), ("pistol", pistol) })
                     Assert.IsTrue(grabbers.Any(i => Overlaps(i, target)),
                         $"{name}: no grab interactor shares a layer with the {item} (grab interactors: {Describe(grabbers)})");
                 Assert.IsTrue(pokers.Any(p => Overlaps(p, bell)),
                     $"{name}: no poke interactor shares a layer with the bell (poke interactors: {Describe(pokers)})");
             }
+            yield break;
+        }
+
+        // Playtest 5: the tracked hands are more see-through than the sample's, so they don't hide what they hold.
+        [UnityTest]
+        public IEnumerator TrackedHandsAreSeeThrough()
+        {
+            var hands = Object.FindAnyObjectByType<SeeThroughHands>();
+            Assert.IsNotNull(hands, "the rig swaps the hand material");
+            Assert.IsNotNull(hands.original); Assert.IsNotNull(hands.seeThrough);
+            foreach (var prop in new[] { "_Color", "_MainColor", "_EdgeColor" })
+                if (hands.original.HasProperty(prop))
+                    Assert.Less(hands.seeThrough.GetColor(prop).a, hands.original.GetColor(prop).a, $"{prop} is more transparent");
+            // A stand-in hand mesh with the depth prepass in slot 0 and the hand material in slot 1: only slot 1 changes.
+            var go = new GameObject("Hand mesh"); go.transform.SetParent(hands.transform, false);
+            var r = go.AddComponent<SkinnedMeshRenderer>();
+            var depth = new Material(hands.original);
+            r.sharedMaterials = new[] { depth, hands.original };
+            Assert.AreEqual(1, SeeThroughHands.Apply(go.transform, hands.original, hands.seeThrough));
+            Assert.AreSame(depth, r.sharedMaterials[0]); Assert.AreSame(hands.seeThrough, r.sharedMaterials[1]);
+            Object.Destroy(go); Object.Destroy(depth);
             yield break;
         }
 

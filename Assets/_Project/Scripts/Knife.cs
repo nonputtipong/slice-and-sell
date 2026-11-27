@@ -27,6 +27,9 @@ namespace SliceAndSell
 
         XRGrabInteractable grab;
 
+        // How fast the edge moved last frame (m/s), held or not: a fast swing at a thief is a slash (Customer).
+        public float Speed { get; private set; }
+
         void Awake() => grab = GetComponent<XRGrabInteractable>();
         void OnEnable() { lastStart = edgeStart.position; lastEnd = edgeEnd.position; }
 
@@ -34,6 +37,7 @@ namespace SliceAndSell
         void LateUpdate()
         {
             Vector3 s = edgeStart.position, e = edgeEnd.position;
+            Speed = Time.deltaTime > 0f ? Mathf.Max((s - lastStart).magnitude, (e - lastEnd).magnitude) / Time.deltaTime : 0f;
             // Paused: no cutting, and a pass in progress is dropped (the blade must go in again after resume).
             if (GamePause.Paused) { tracked = null; tracker = null; lastStart = s; lastEnd = e; return; }
             var fruit = board ? board.Fruit : null;

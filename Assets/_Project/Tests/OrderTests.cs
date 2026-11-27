@@ -30,14 +30,14 @@ namespace SliceAndSell.Tests
         }
 
         // Bowl and fruit are children of the OrderManager object, so TearDown removes them too.
-        internal static Bowl BowlWith(Transform parent, int cuts, bool skewer = false, bool chili = false)
+        internal static Bowl BowlWith(Transform parent, int cuts, bool skewer = false, bool chili = false, string fruitName = "Guava")
         {
             var bowl = new GameObject("Bowl").AddComponent<Bowl>();
             bowl.transform.SetParent(parent);
             if (skewer) bowl.AddExtra(ExtraKind.Skewer);
             if (chili) bowl.AddExtra(ExtraKind.Chili);
             if (cuts < 0) return bowl;
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Prefabs/Guava.prefab");
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/_Project/Prefabs/{fruitName}.prefab");
             var fruit = Object.Instantiate(prefab, parent).GetComponent<Fruit>();
             fruit.GetComponent<Rigidbody>().isKinematic = true;
             for (int i = 0; i < cuts; i++) fruit.ApplyCut(false);
@@ -96,35 +96,42 @@ namespace SliceAndSell.Tests
 
         // Playtest: the bowl showed an orange blob ("soup"). It now holds the fruit's own slices, laid in the bowl at their
         // real size (playtest 4: shrinking them to fit looked wrong); one wider than the bowl rests on the rim.
+        // Every fruit, fully cut, at real size, settles INTO the 1.3x bowl: no corner below the inner floor or more than
+        // 2 mm into the sloped wall (the original limits), and the heap reaches down into the bowl instead of floating
+        // at the rim (playtest 4). Small fruit lies low; a watermelon quarter (wider than the bowl) may rest on the rim.
         [UnityTest]
-        public IEnumerator BowlHoldsTheCutFruitsSlices()
+        public IEnumerator EveryFruitSettlesIntoTheBowl(
+            [Values("Guava:2:3:0.4", "Mango:3:4:0.5", "Pineapple:4:4:1.0", "Watermelon:3:4:1.0")] string spec)
         {
-            var bowl = BowlWith(2);
+            var parts = spec.Split(':');
+            int cuts = int.Parse(parts[1]), slices = int.Parse(parts[2]);
+            float lowLimit = float.Parse(parts[3], System.Globalization.CultureInfo.InvariantCulture) * Bowl.RimHeight;
+            var bowl = BowlWith(orders.transform, cuts, fruitName: parts[0]);
             Assert.IsNotNull(bowl.Slices, "slices copied into the bowl");
             yield return null;                                  // they fall into place on the next frame
             Assert.IsTrue(bowl.Settled, "settled");
             float lowest = float.MaxValue;
             var pieces = bowl.Slices.GetComponentsInChildren<MeshRenderer>();
-            Assert.AreEqual(3, pieces.Length, "a guava cut twice is three slices");
+            Assert.AreEqual(slices, pieces.Length, $"{parts[0]} cut {cuts} times");
             foreach (var p in pieces)
             {
                 Assert.IsNull(p.GetComponent<Collider>(), "slices are only a look");
                 Assert.AreEqual(1f, p.transform.lossyScale.x, 1e-3f, $"{p.name} keeps its real size");
-                // Below the rim, every corner of the slice's box is inside the bowl's sloping wall at that height.
                 var b = p.GetComponent<MeshFilter>().sharedMesh.bounds;
                 for (int k = 0; k < 8; k++)
                 {
                     var c = b.center + Vector3.Scale(b.extents, new Vector3((k & 1) == 0 ? -1 : 1, (k & 2) == 0 ? -1 : 1, (k & 4) == 0 ? -1 : 1));
                     var local = bowl.transform.InverseTransformPoint(p.transform.TransformPoint(c));
                     float h = local.y - Bowl.FootY;
-                    Assert.Greater(h, 0.006f, $"{p.name} is above the inner floor");
+                    Assert.GreaterOrEqual(h, Bowl.FloorHeight - 0.001f, $"{p.name} corner {k} is below the inner floor (h {h:F4})");
                     lowest = Mathf.Min(lowest, h);
                     float r = new Vector2(local.x, local.z).magnitude;
-                    if (h < 0.06f) Assert.LessOrEqual(r, Bowl.InnerRadius(h) + 0.004f, $"{p.name} corner {k} pokes through the wall (r {r:F3} at h {h:F3})");
+                    if (h < Bowl.RimHeight - 0.005f) Assert.LessOrEqual(r, Bowl.InnerRadius(h) + 0.002f, $"{p.name} corner {k} pokes through the wall (r {r:F4} at h {h:F4})");
                 }
+                var centre = bowl.transform.InverseTransformPoint(p.bounds.center);
+                Assert.Less(new Vector2(centre.x, centre.z).magnitude, Bowl.RimRadius, $"{p.name} lies over the bowl, not beside it");
             }
-            // Playtest 4: they used to float at rim height. Now the lowest slice reaches down near the bowl's floor.
-            Assert.Less(lowest, 0.025f, $"slices lie down in the bowl (lowest corner {lowest:F3} m above the foot)");
+            Assert.Less(lowest, lowLimit, $"{parts[0]}: slices lie down in the bowl (lowest corner {lowest:F3} m above the foot)");
         }
 
         // Playtest: Pause did nothing you could see. Paused, the card says so, and nothing can be served.

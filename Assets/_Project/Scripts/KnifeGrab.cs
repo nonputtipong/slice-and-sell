@@ -13,8 +13,9 @@ namespace SliceAndSell
         public Transform handAttachTransform;
         XRInputModalityManager modality;
 
+        // With dynamic attach the item keeps the pose it was grabbed in, for hands too: the hand grip only applies to fixed grips.
         public override Transform GetAttachTransform(IXRInteractor interactor) =>
-            handAttachTransform && IsHand(interactor) ? handAttachTransform : base.GetAttachTransform(interactor);
+            !useDynamicAttach && handAttachTransform && IsHand(interactor) ? handAttachTransform : base.GetAttachTransform(interactor);
 
         bool IsHand(IXRInteractor interactor)
         {
