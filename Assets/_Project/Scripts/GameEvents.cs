@@ -21,6 +21,7 @@ namespace SliceAndSell
         public static event Action<Vector3> WalkedOut;                       // customer ran out of patience
         public static event Action<Vector3, string> AddedToBowl;             // bowl position, a fruit name or "Chili" / "Skewer"
         public static event Action<bool, int> ShiftEnded;                    // won, stars (0-3)
+        public static event Action<Vector3, Color> Splat;                    // thrown food burst on a face: where, juice colour
 
         public static void RaiseCut(Fruit f, CutInfo c, int combo) => Cut?.Invoke(f, c, combo);
         public static void RaiseCutMissed(Vector3 at) => CutMissed?.Invoke(at);
@@ -29,5 +30,6 @@ namespace SliceAndSell
         public static void RaiseWalkedOut(Vector3 at) => WalkedOut?.Invoke(at);
         public static void RaiseAddedToBowl(Vector3 at, string what) => AddedToBowl?.Invoke(at, what);
         public static void RaiseShiftEnded(bool won, int stars) => ShiftEnded?.Invoke(won, stars);
+        public static void RaiseSplat(Vector3 at, Color colour) => Splat?.Invoke(at, colour);
     }
 }

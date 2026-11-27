@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 namespace SliceAndSell
 {
@@ -9,6 +11,10 @@ namespace SliceAndSell
     // A walk-on customer: walks to its counter spot, faces the player and waits, reacts, walks off.
     // Kinematic (transform only, no physics/navmesh): it stops exactly at the spot it is given, so the
     // caller keeps that spot clear of the counter. Clips are legacy Animation (glTFast import), played by name.
+    // Thrown things: two trigger hitboxes (head, body) made at start. Food in the face splats there and the customer
+    // shakes their head; a knife just bounces off a customer. A Thief (same model, extra component) reacts instead:
+    // food slows him, and the pistol (Bullet), a thrown knife or a slash with a held one knock him out (KnockOut: a
+    // cartoon fall with circling stars; playtest 5 and review: no ragdoll in a 13+ game).
     public class Customer : MonoBehaviour
     {
         public Animation anim;
@@ -17,20 +23,65 @@ namespace SliceAndSell
         public Transform head;    // nod / head-shake, layered on the clip in LateUpdate (every clip keys Head rotation)
         public float walkSpeed = 1.1f, turnSpeed = 360f;   // m/s, deg/s
 
-        const float Fade = 0.2f, ReactTime = 0.6f;
+        public const float MinThrowSpeed = 1.0f;           // m/s: slower than this is a drop or a toss, not a throw (1.5 was hard with hands)
+        public const float SlashSpeed = 1.0f;              // m/s: a held knife's edge this fast through a thief is a slash
+        public const float KnockOutSeconds = 2.5f, FallSeconds = 0.4f, VanishSeconds = 0.4f;
+        public const float MinTossSpeed = 0.5f;            // m/s: a bowl tossed to the customer is enough to serve it
+        // The OrderManager that spawned this customer (set by it). Review: a global FindAnyObjectByType could return another
+        // manager (e.g. a stall scene still loaded next to a test's own), so a tossed bowl went unserved at random.
+        public OrderManager Orders { get; set; }
+        const float Fade = 0.2f, ReactTime = 0.6f, ShakeTime = 0.6f;
+        static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
         public bool AtCounter { get; private set; }
+        public bool Dead { get; private set; }
+        public float SpeedScale { get; set; } = 1f;        // the thief slows when hit; walking and the clips scale with it
+        public int Splats { get; private set; }
 
-        float headYaw, headPitch;
+        // Every hit a thrown thing makes on a living customer or thief: (who, the thrown rigidbody, head?, is a knife).
+        public event Action<Customer, Rigidbody, bool, bool> Hit;
+
+        float headYaw, headPitch, shake;
+        Collider headBox, bodyBox;
+        readonly Dictionary<Rigidbody, float> recentHits = new Dictionary<Rigidbody, float>();
+
+        // Paused (GamePause): walking, turning and reacting stop where they are, and the clips freeze.
+        static float Dt => GamePause.Paused ? 0f : Time.deltaTime;
 
         void Awake()
         {
             // The importer already loops them; this keeps it true if a clip is swapped by hand.
             foreach (AnimationState s in anim) s.wrapMode = WrapMode.Loop;
+            MakeHitboxes();
+            if (!sphereMesh)
+            {
+                // The built-in sphere for splat blobs, taken once here: hits arrive in physics callbacks, where a
+                // primitive's collider can't be removed at once.
+                var p = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                p.GetComponent<Collider>().enabled = false;
+                sphereMesh = p.GetComponent<MeshFilter>().sharedMesh;
+                Destroy(p);
+            }
         }
+
+        static Mesh sphereMesh;
+
+        void OnEnable() { GamePause.Changed += OnPauseChanged; OnPauseChanged(GamePause.Paused); }
+        void OnDisable() => GamePause.Changed -= OnPauseChanged;
+
+        void OnPauseChanged(bool _) => ApplyClipSpeed();
+
+        void ApplyClipSpeed()
+        {
+            if (!anim || Dead) return;
+            foreach (AnimationState s in anim) s.speed = GamePause.Paused ? 0f : SpeedScale;
+        }
+
+        public void SetSpeedScale(float scale) { SpeedScale = scale; ApplyClipSpeed(); }
 
         public void Arrive(Vector3 from, Vector3 counterSpot, Action onArrived)
         {
+            if (Dead) return;
             StopAllCoroutines();
             AtCounter = false;
             transform.position = from;
@@ -39,49 +90,78 @@ namespace SliceAndSell
             StartCoroutine(ArriveRoutine(counterSpot, onArrived));
         }
 
-        public void SetPatience(float t01, bool visible) => ring.Set(t01, visible);
+        public void SetPatience(float t01, bool visible) { if (ring) ring.Set(t01, visible); }
 
         public void Leave(CustomerMood mood, Vector3 exit)
         {
+            if (Dead) return;
             StopAllCoroutines();
             AtCounter = false;
-            ring.Set(0, false);
+            SetPatience(0, false);
             StartCoroutine(LeaveRoutine(mood, exit));
+        }
+
+        // Walks (or, with the Run clip, runs) through the points, then calls `done`. Used by the thief.
+        public void Travel(Vector3[] path, string clip, float speed, Action done)
+        {
+            if (Dead) return;
+            StopAllCoroutines();
+            AtCounter = false;
+            StartCoroutine(TravelRoutine(path, clip, speed, done));
+        }
+
+        // Turns to face a direction (yaw only), then calls `done`.
+        public void Face(Vector3 direction, Action done)
+        {
+            if (Dead) return;
+            StopAllCoroutines();
+            StartCoroutine(FaceRoutine(Quaternion.LookRotation(new Vector3(direction.x, 0f, direction.z)), done));
         }
 
         IEnumerator ArriveRoutine(Vector3 spot, Action onArrived)
         {
-            yield return WalkTo(spot);
-            var facePlayer = Quaternion.LookRotation(Vector3.back);
-            while (Quaternion.Angle(transform.rotation, facePlayer) > 0.5f)
-            {
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, facePlayer, turnSpeed * Time.deltaTime);
-                yield return null;
-            }
-            transform.rotation = facePlayer;
+            yield return WalkTo(spot, "Walk", walkSpeed);
+            yield return FaceRoutine(Quaternion.LookRotation(Vector3.back), null);
             AtCounter = true;
             onArrived?.Invoke();
+        }
+
+        IEnumerator FaceRoutine(Quaternion target, Action done)
+        {
+            while (Quaternion.Angle(transform.rotation, target) > 0.5f)
+            {
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, target, turnSpeed * Dt);
+                yield return null;
+            }
+            transform.rotation = target;
+            done?.Invoke();
         }
 
         IEnumerator LeaveRoutine(CustomerMood mood, Vector3 exit)
         {
             anim.CrossFade("Idle", Fade);
-            for (float t = 0; t < 1; t += Time.deltaTime / ReactTime) { React(mood, t); yield return null; }
+            for (float t = 0; t < 1; t += Dt / ReactTime) { React(mood, t); yield return null; }
             model.localPosition = Vector3.zero; model.localRotation = Quaternion.identity;
             headYaw = headPitch = 0;
-            yield return WalkTo(exit);
+            yield return WalkTo(exit, "Walk", walkSpeed);
             Destroy(gameObject);
         }
 
-        IEnumerator WalkTo(Vector3 target)
+        IEnumerator TravelRoutine(Vector3[] path, string clip, float speed, Action done)
         {
-            anim.CrossFade("Walk", Fade);
+            foreach (var p in path) yield return WalkTo(p, clip, speed);
+            done?.Invoke();
+        }
+
+        IEnumerator WalkTo(Vector3 target, string clip, float speed)
+        {
+            anim.CrossFade(anim[clip] ? clip : "Walk", Fade);
             while ((transform.position - target).sqrMagnitude > 1e-6f)
             {
                 var dir = target - transform.position; dir.y = 0;
                 if (dir.sqrMagnitude > 1e-4f)
-                    transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(dir), turnSpeed * Time.deltaTime);
-                transform.position = Vector3.MoveTowards(transform.position, target, walkSpeed * Time.deltaTime);
+                    transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(dir), turnSpeed * Dt);
+                transform.position = Vector3.MoveTowards(transform.position, target, speed * SpeedScale * Dt);
                 yield return null;
             }
             anim.CrossFade("Idle", Fade);
@@ -112,9 +192,219 @@ namespace SliceAndSell
 
         void LateUpdate()
         {
+            if (Dead) return;                               // physics owns the bones now
+            if (shake > 0f)
+            {
+                shake = Mathf.Max(0f, shake - Dt);
+                float t = 1f - shake / ShakeTime;
+                headYaw = shake > 0f ? 25f * Mathf.Sin(6f * Mathf.PI * t) : 0f;
+            }
             // Runs after the Animation has posed the head this frame, so the offset never accumulates.
             if (head && (headYaw != 0 || headPitch != 0))
                 head.rotation = Quaternion.AngleAxis(headYaw, transform.up) * Quaternion.AngleAxis(headPitch, transform.right) * head.rotation;
+        }
+
+        // ---------- thrown things ----------
+
+        // Head: a sphere round the face, generous (a throw moves ~12 cm per physics step and triggers get no CCD).
+        // Body: a capsule from the knees to the shoulders. Both on Ignore Raycast, so rays to menus never stop on them.
+        void MakeHitboxes()
+        {
+            if (head)
+            {
+                var go = new GameObject("Head hitbox") { layer = 2 };
+                go.transform.SetParent(head, false);
+                go.transform.position = head.position + Vector3.up * 0.09f;
+                var sphere = go.AddComponent<SphereCollider>();
+                sphere.isTrigger = true;
+                sphere.radius = 0.15f / Mathf.Max(1e-4f, go.transform.lossyScale.x);
+                go.AddComponent<Hitbox>().Init(this, true);
+                headBox = sphere;
+            }
+            var b = new GameObject("Body hitbox") { layer = 2 };
+            b.transform.SetParent(transform, false);
+            var cap = b.AddComponent<CapsuleCollider>();
+            cap.isTrigger = true;
+            cap.center = new Vector3(0f, 1.0f, 0f); cap.height = 1.1f; cap.radius = 0.25f;
+            b.AddComponent<Hitbox>().Init(this, false);
+            bodyBox = cap;
+        }
+
+        // From a Hitbox. One thrown thing counts once (a knife has two colliders, a bowl its box and its mouth).
+        internal void OnHitbox(Collider other, bool isHead)
+        {
+            if (Dead || GamePause.Paused) return;
+            var rb = other.attachedRigidbody;
+            if (!rb) return;
+            var grab = rb.GetComponent<XRGrabInteractable>();
+            var knifeTool = rb.GetComponent<Knife>();
+            var thief = GetComponent<Thief>();
+            bool held = grab && grab.isSelected;
+            // Playtest 5: a fast swing of a held knife (or Eto) through a thief takes him down, like a shot.
+            if (held && knifeTool && thief) { Slash(rb, knifeTool, grab, thief, other); return; }
+            if (rb.isKinematic || held) return;                                 // held items are kinematic
+            var bowl = rb.GetComponent<Bowl>();
+            // A bowl only needs a toss to be served; anything else must be thrown.
+            if (rb.linearVelocity.magnitude < (bowl ? MinTossSpeed : MinThrowSpeed)) return;
+            if (recentHits.TryGetValue(rb, out float at) && Time.time - at < 0.5f) return;
+            recentHits[rb] = Time.time;
+
+            // Serving by throwing (playtest: placing the bowl on the tray was fiddly): a bowl that reaches the customer
+            // waiting at the counter is handed over, paid and used up exactly as on the HAND OVER tray.
+            if (bowl && !GetComponent<Thief>())
+            {
+                if (Orders && Orders.DeliverTo(this, bowl) != DeliveryResult.NoCustomer) { Destroy(bowl.gameObject); return; }
+            }
+
+            bool knife = knifeTool;
+            Hit?.Invoke(this, rb, isHead, knife);
+            if (knife)
+            {
+                // A thrown knife takes a thief down (a tough one needs two); customers aren't targets. It bounces off either way.
+                if (thief) thief.Shot(rb.position, rb.linearVelocity);
+                rb.linearVelocity *= -0.2f;
+                return;
+            }
+            if (isHead && SplatColour(rb.gameObject, out var colour)) Splat(rb, colour);
+            if (!GetComponent<Thief>())
+            {
+                if (isHead) shake = ShakeTime;                                  // "hey!"
+                else return;                                                    // a hit on the body: the food just drops
+            }
+            Destroy(rb.gameObject);                                             // it burst on them
+        }
+
+        // Fruit: its juice. A bowl: its slices' colour (an empty bowl doesn't splat). Chili: red. Anything else: no.
+        static bool SplatColour(GameObject item, out Color colour)
+        {
+            colour = default;
+            var fruit = item.GetComponent<Fruit>();
+            if (fruit) { colour = fruit.juiceColor; return true; }
+            var bowl = item.GetComponent<Bowl>();
+            if (bowl && bowl.IsFilled)
+            {
+                var r = bowl.Slices ? bowl.Slices.GetComponentInChildren<MeshRenderer>() : null;
+                colour = r && r.sharedMaterial && r.sharedMaterial.HasProperty(BaseColorId) ? r.sharedMaterial.GetColor(BaseColorId) : new Color(0.98f, 0.8f, 0.55f);
+                return true;
+            }
+            var extra = item.GetComponent<Extra>();
+            if (extra && extra.kind == ExtraKind.Chili) { colour = new Color(0.85f, 0.12f, 0.08f); return true; }
+            return false;
+        }
+
+        // A few flattened blobs stuck to the face where it hit, in the thrown item's own material tinted to the juice
+        // (no Shader.Find: the item's URP Lit material is in the build), plus a burst of the stall's juice particles.
+        void Splat(Rigidbody item, Color colour)
+        {
+            var centre = headBox.bounds.center;
+            var point = headBox.ClosestPoint(item.position - item.linearVelocity.normalized * 0.3f);
+            var normal = (point - centre).sqrMagnitude > 1e-6f ? (point - centre).normalized : -item.linearVelocity.normalized;
+            point = centre + normal * 0.1f;                                     // on the face, not at the hitbox's edge
+            var src = item.GetComponentInChildren<MeshRenderer>();
+            var block = new MaterialPropertyBlock();
+            block.SetColor(BaseColorId, colour);
+            for (int i = 0; i < 5; i++)
+            {
+                var blob = new GameObject("Splat", typeof(MeshFilter), typeof(MeshRenderer));
+                blob.GetComponent<MeshFilter>().sharedMesh = sphereMesh;
+                var offset = Vector3.ProjectOnPlane(UnityEngine.Random.insideUnitSphere, normal) * (i == 0 ? 0f : 0.045f);
+                blob.transform.SetPositionAndRotation(point + offset, Quaternion.LookRotation(normal) * Quaternion.Euler(0, 0, UnityEngine.Random.Range(0f, 180f)));
+                float size = i == 0 ? 0.07f : UnityEngine.Random.Range(0.02f, 0.04f);
+                blob.transform.localScale = new Vector3(size, size * UnityEngine.Random.Range(0.6f, 1f), size * 0.25f);
+                blob.transform.SetParent(head, true);                           // keeps its world size on any bone scale
+                var r = blob.GetComponent<MeshRenderer>();
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                if (src && src.sharedMaterial) r.sharedMaterial = src.sharedMaterial;
+                r.SetPropertyBlock(block);
+            }
+            Splats++;
+            GameEvents.RaiseSplat(point, colour);
+        }
+
+        void Slash(Rigidbody rb, Knife knife, XRGrabInteractable grab, Thief thief, Collider blade)
+        {
+            if (knife.Speed < SlashSpeed) return;
+            if (recentHits.TryGetValue(rb, out float at) && Time.time - at < 0.5f) return;   // one swing, one hit
+            recentHits[rb] = Time.time;
+            var point = blade.bounds.center;
+            var away = point - transform.position; away.y = 0f;
+            bool down = thief.Shot(point, -away);                          // he falls away from the player's side
+            Haptics.Pulse(grab, down ? Pistol.TakedownAmplitude : Pistol.WoundAmplitude, down ? Pistol.TakedownSeconds : Pistol.WoundSeconds);
+        }
+
+        // A hit that doesn't put him down: the head jerks (same shake as a splat).
+        public void Stagger() { if (!Dead) shake = ShakeTime; }
+
+        // ---------- knock-out ----------
+
+        public int StarCount { get; private set; }
+
+        // Cartoon knock-out: the clip stops, he tips over backwards (away from the hit) in FallSeconds, three yellow
+        // stars circle over his head, and after KnockOutSeconds he shrinks away and is gone.
+        public void KnockOut(Vector3 direction)
+        {
+            if (Dead) return;
+            Dead = true;
+            StopAllCoroutines();
+            if (anim) { anim.Stop(); anim.enabled = false; }
+            headYaw = headPitch = shake = 0f;
+            SetPatience(0, false);
+            if (headBox) headBox.enabled = false;
+            if (bodyBox) bodyBox.enabled = false;
+            var away = Vector3.ProjectOnPlane(direction, Vector3.up);
+            if (away.sqrMagnitude < 1e-4f) away = -transform.forward;
+            StartCoroutine(KnockOutRoutine(away.normalized));
+        }
+
+        IEnumerator KnockOutRoutine(Vector3 away)
+        {
+            var stars = MakeStars();
+            var axis = Vector3.Cross(Vector3.up, away);
+            var start = transform.rotation; var pivot = transform.position;
+            var scale = transform.localScale;
+            float t = 0f;
+            while (t < KnockOutSeconds + VanishSeconds)
+            {
+                float fall = Mathf.Clamp01(t / FallSeconds);
+                fall = 1f - (1f - fall) * (1f - fall);                          // ease out: a quick topple that lands
+                transform.rotation = Quaternion.AngleAxis(80f * fall, axis) * start;
+                transform.position = pivot;
+                if (t > KnockOutSeconds) transform.localScale = scale * Mathf.Max(0.01f, 1f - (t - KnockOutSeconds) / VanishSeconds);
+                var centre = (head ? head.position : transform.position + Vector3.up) + Vector3.up * 0.18f;
+                for (int i = 0; i < stars.Length; i++)
+                {
+                    float a = t * 4f + i * Mathf.PI * 2f / stars.Length;
+                    stars[i].position = centre + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 0.16f;
+                    var cam = Camera.main;
+                    stars[i].rotation = (cam ? Quaternion.LookRotation(stars[i].position - cam.transform.position) : Quaternion.identity)
+                                        * Quaternion.Euler(0f, 0f, t * 360f);   // facing the player, spinning
+                }
+                yield return null;
+                t += Dt;                                                        // paused: he stays down, stars still
+            }
+            Destroy(gameObject);
+        }
+
+        // Three yellow cartoon stars ("*" glyphs in the stall's font, facing the player). Text, not a tinted copy of the
+        // model's textured material, so they read as stars.
+        Transform[] MakeStars()
+        {
+            var stars = new Transform[3];
+            for (int i = 0; i < stars.Length; i++)
+            {
+                var star = new GameObject("KO star", typeof(RectTransform));
+                star.transform.SetParent(transform, false);
+                var t = star.AddComponent<TMPro.TextMeshPro>();
+                if (Orders && Orders.orderCard) t.font = Orders.orderCard.font;
+                t.text = "*"; t.fontSize = 3f; t.fontStyle = TMPro.FontStyles.Bold;
+                t.color = new Color(1f, 0.85f, 0.1f); t.alignment = TMPro.TextAlignmentOptions.Center;
+                t.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+                ((RectTransform)star.transform).sizeDelta = new Vector2(0.2f, 0.2f);
+                star.transform.localScale = Vector3.one / Mathf.Max(1e-4f, transform.lossyScale.x);
+                stars[i] = star.transform;
+            }
+            StarCount = stars.Length;
+            return stars;
         }
     }
 }

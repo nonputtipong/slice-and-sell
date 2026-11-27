@@ -128,10 +128,17 @@ namespace SliceAndSell.Tests
             Assert.IsTrue(fruit.IsFullyCut);
             Assert.AreEqual(2, orders.Combo, "both cuts on the guides are clean");
 
+            // Playtest 2: a bowl already waits on the scoop spot, and the cut fruit goes in by hand, not by itself.
             var bowl = bowlStack.Current.GetComponent<Bowl>();
-            yield return DropAt(bowl.gameObject, board.scoopSocket.transform.position);
-            Assert.IsTrue(bowl.IsFilled, "slices go into the bowl on the scoop spot");
+            Assert.IsTrue(board.scoopSocket.hasSelection, "a bowl waits on the scoop spot");
+            yield return new WaitForSeconds(0.3f);
+            Assert.IsFalse(bowl.IsFilled, "the cut fruit doesn't jump into the bowl by itself");
+            board.fruitSocket.socketActive = false;         // the hand lifts it off the board
+            yield return DropAt(fruit.gameObject, bowl.transform.position + Vector3.up * 0.07f);
+            board.fruitSocket.socketActive = true;
+            Assert.IsTrue(bowl.IsFilled, "let go over the bowl: the slices are in it");
             Assert.IsTrue(fruit == null, "fruit is consumed");
+            Assert.AreSame(bowl, bowlStack.Current.GetComponent<Bowl>(), "the filled bowl is still the one on the spot");
 
             // A hand holding the bowl stops the scoop socket from taking it back; here the socket is paused instead.
             int before = orders.Money;
@@ -144,10 +151,34 @@ namespace SliceAndSell.Tests
             Assert.IsNull(orders.Current, "customer leaves after paying");
             var tutorial = Object.FindAnyObjectByType<Tutorial>();
             Assert.Greater(tutorial.OnboardingSeconds, 0f, "serving customer 1 finishes the tutorial and records the onboarding time");
+
+            yield return new WaitForSeconds(1.2f);          // the tray uses the bowl up after 0.5 s
+            Assert.IsTrue(bowl == null, "the handed-over bowl is gone");
+            Assert.IsNotNull(bowlStack.Current, "a fresh bowl is back on the spot");
+            Assert.IsFalse(bowlStack.Current.GetComponent<Bowl>().IsFilled, "and it is empty");
+            Assert.IsTrue(board.scoopSocket.hasSelection, "standing in the scoop spot");
         }
 
-        // Item 6 of the Quest playtest: the cut fruit goes straight into a bowl wherever it stands (here, still on its
-        // stack); nobody has to carry the bowl to the board first. Then it is served as usual.
+        // Playtest 2: lifting the bowl off its spot (to carry it to the tray) makes no second bowl; only a bowl that is
+        // gone (handed over, or dropped and despawned) is replaced.
+        [UnityTest]
+        public IEnumerator BowlSpotRefillsOnlyWhenTheBowlIsGone()
+        {
+            var bowl = bowlStack.Current;
+            board.scoopSocket.socketActive = false;
+            var rb = bowl.GetComponent<Rigidbody>(); rb.isKinematic = true;
+            bowl.transform.position += new Vector3(0f, 0.3f, -0.2f);       // carried away
+            yield return new WaitForSeconds(1f);
+            Assert.AreSame(bowl, bowlStack.Current, "no second bowl while this one is carried");
+            Object.Destroy(bowl.gameObject);
+            board.scoopSocket.socketActive = true;
+            yield return new WaitForSeconds(0.8f);
+            Assert.IsTrue(bowlStack.Current != null && bowlStack.Current != bowl, "a new bowl once it is gone");
+            Assert.IsTrue(board.scoopSocket.hasSelection, "on the scoop spot");
+        }
+
+        // Item 6 of the Quest playtest: the cut fruit goes into a bowl wherever it stands; nobody has to carry the
+        // bowl to the board first. Then it is served as usual.
         [UnityTest]
         public IEnumerator CutFruitLetGoOverABowlGoesIn()
         {
@@ -168,7 +199,9 @@ namespace SliceAndSell.Tests
             Assert.IsTrue(fruit == null, "the fruit is used up");
 
             int before = orders.Money;
+            board.scoopSocket.socketActive = false;         // the hand carries it off the scoop spot
             yield return DropAt(bowl.gameObject, tray.transform.position);
+            board.scoopSocket.socketActive = true;
             Assert.AreEqual(20, orders.Money - before, "served and paid");
         }
 
@@ -209,36 +242,47 @@ namespace SliceAndSell.Tests
             Object.Destroy(hand);
         }
 
-        // Item 1 of the Quest playtest: every bin makes a new item when the waiting one is grabbed, knocked out of the
-        // bin, or destroyed without a grab. And it does not make extra ones while the first just settles.
+        // Playtest 5 (replaces "a new item as soon as one is taken", which cluttered the counter): a bin makes its next
+        // item only once the last one is used up or despawned, never while it is held, carried or knocked about. And it
+        // does not make extra ones while the first just settles.
         [UnityTest]
-        public IEnumerator EveryBinKeepsOneItemWaiting()
+        public IEnumerator EveryBinRefillsOnlyWhenItsItemIsUsedUp()
         {
             var bins = Object.FindObjectsByType<Dispenser>(FindObjectsSortMode.None);
-            Assert.GreaterOrEqual(bins.Length, 7, "4 fruit crates, bowls, skewers, chilies");
+            Assert.AreEqual(7, bins.Length, "4 fruit crates, bowls, skewers, chilies");
+            Assert.IsTrue(bins.All(d => d.onlyWhenGone), "every bin waits for its item to be used up");
             var first = bins.Select(d => d.Current).ToArray();
             yield return new WaitForSeconds(2f);
             for (int i = 0; i < bins.Length; i++)
                 Assert.AreSame(first[i], bins[i].Current, $"{bins[i].name}: the item settled in its bin, no respawn");
 
-            // Knocked out of the bin (not grabbed).
+            // Knocked out of the bin (not grabbed): no new one, so nothing piles up on the counter. The bowl spot is a
+            // socket (it holds its bowl, and snaps it back): BowlSpotRefillsOnlyWhenTheBowlIsGone covers it, so the
+            // knock and Waiting checks leave it out.
+            var all = bins;
+            bins = all.Where(d => !d.prefab.GetComponent<Bowl>()).ToArray();
+            first = bins.Select(d => d.Current).ToArray();
             foreach (var d in bins) { var rb = d.Current.GetComponent<Rigidbody>(); rb.isKinematic = true; d.Current.transform.position += new Vector3(0, 0.3f, 0); }
-            yield return new WaitForSeconds(0.6f);
+            yield return new WaitForSeconds(0.8f);
             for (int i = 0; i < bins.Length; i++)
             {
-                Assert.IsNotNull(bins[i].Current, $"{bins[i].name}: a new item after a knock");
-                Assert.AreNotSame(first[i], bins[i].Current, $"{bins[i].name}: a new one, not the knocked one");
-                Object.Destroy(first[i].gameObject);
+                Assert.AreSame(first[i], bins[i].Current, $"{bins[i].name}: no new item while the knocked one is still around");
+                Assert.IsFalse(bins[i].Waiting, $"{bins[i].name}: and nothing waits in the bin (a thief finds none)");
             }
 
-            // Used up or despawned without a grab.
-            var second = bins.Select(d => d.Current).ToArray();
-            foreach (var g in second) Object.Destroy(g.gameObject);
+            // Used up or despawned: a new one.
+            foreach (var g in first) Object.Destroy(g.gameObject);
             yield return new WaitForSeconds(0.6f);
+            var second = bins.Select(d => d.Current).ToArray();
             for (int i = 0; i < bins.Length; i++)
-                Assert.IsTrue(bins[i].Current != null && bins[i].Current != second[i], $"{bins[i].name}: a new item after a destroy");
+            {
+                Assert.IsTrue(second[i] != null && second[i] != first[i], $"{bins[i].name}: a new item once the old one is gone");
+                Assert.IsTrue(bins[i].Waiting, $"{bins[i].name}: waiting in the bin");
+            }
 
-            // Grabbed.
+            // Grabbed and carried away: still no new one until it is used up (the bowl too, lifted off its spot).
+            bins = all;
+            board.scoopSocket.socketActive = false;
             var hand = new GameObject("Test hand"); hand.AddComponent<SphereCollider>().isTrigger = true;
             var direct = hand.AddComponent<XRDirectInteractor>();
             foreach (var d in bins)
@@ -247,15 +291,17 @@ namespace SliceAndSell.Tests
                 hand.transform.position = taken.transform.position;
                 yield return null;
                 direct.StartManualInteraction((UnityEngine.XR.Interaction.Toolkit.Interactables.IXRSelectInteractable)taken);
-                yield return new WaitForSeconds(0.5f);
-                Assert.IsNull(d.Current, $"{d.name}: nothing new spawns inside the item still held over the bin");
+                yield return null;
                 hand.transform.position += new Vector3(0f, 0.3f, -0.2f);       // carried away
-                yield return new WaitForSeconds(0.5f);
-                Assert.IsTrue(d.Current != null && d.Current != taken, $"{d.name}: a new item once the grabbed one has left");
+                yield return new WaitForSeconds(0.6f);
+                Assert.AreSame(taken, d.Current, $"{d.name}: no new item while the taken one is held");
                 direct.EndManualInteraction();
                 yield return null;
                 Object.Destroy(taken.gameObject);
+                yield return new WaitForSeconds(0.5f);
+                Assert.IsTrue(d.Current != null && d.Current != taken, $"{d.name}: a new item once the taken one is used up");
             }
+            board.scoopSocket.socketActive = true;
             Object.Destroy(hand);
         }
 

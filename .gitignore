@@ -74,3 +74,8 @@ Thumbs.db
 *.perfetto-trace
 *.pftrace
 OVRMetrics-*/
+
+# Performance report: raw device captures, screenshots, profiler dumps and APKs stay local (review: ~9.7 MB of raw
+# data was tracked); the final PDF is shared with the team separately.
+PerfReport/
+PerfReport.zip

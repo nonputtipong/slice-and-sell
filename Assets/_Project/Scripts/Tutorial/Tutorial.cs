@@ -35,8 +35,8 @@ namespace SliceAndSell
             "<b>Pick up the knife</b>\nGrip, or grab the handle with your hand",
             "<b>Cut along the line (1 of 2)</b>\nPush the blade slowly down through the line",
             "<b>Cut along the new line (2 of 2)</b>\nPush the blade slowly down through the line",
-            "<b>Put it in a bowl</b>\nLift the cut guava and let go over a bowl",
-            "<b>Hand it over</b>\nPut the bowl on the orange tray",
+            "<b>Put it in the bowl</b>\nLift the cut guava and let go over the bowl by the board",
+            "<b>Hand it over</b>\nToss the bowl to the customer (or put it on the orange tray)",
         };
 
         static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
@@ -49,7 +49,7 @@ namespace SliceAndSell
         int customer, step;
         XRBaseInteractable guava;           // the last item seen waiting in the bin
         Fruit cutFruit;                     // the last fully cut fruit seen on the board (may be in the player's hand now)
-        bool bowled;                        // a bowl was filled for this customer (BowlMouth or the scoop spot)
+        bool bowled;                        // a bowl was filled for this customer (the cut fruit let go over it: BowlMouth)
 
         void OnEnable() => GameEvents.AddedToBowl += OnAddedToBowl;
         void OnDisable() => GameEvents.AddedToBowl -= OnAddedToBowl;

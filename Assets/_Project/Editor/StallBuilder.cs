@@ -72,6 +72,10 @@ public static class StallBuilder
         var bowl = SavePrefab(MakeBowl(), "Bowl");
         var skewer = SavePrefab(MakeSkewer(), "Skewer");
         var chili = SavePrefab(MakeChili(), "Chili");
+        // With the other prefabs, before the scene opens: saving a prefab mid-build drops unrecorded changes on
+        // prefab instances already in the scene (the knives' rack board was lost that way).
+        var bulletPrefab = SavePrefab(MakeBullet(), "Bullet");
+        pistolPrefab = SavePrefab(MakePistol(bulletPrefab.GetComponent<Bullet>()), "Pistol");
         var customers = CustomerPrefabBuilder.Build().Select(p => p.GetComponent<Customer>()).ToArray();
         var menu = specs.Select(s => new FruitMenuItem { name = s.name, cuts = s.cuts.Length, price = s.price }).ToArray();
         var levels = MakeLevels();
@@ -96,6 +100,10 @@ public static class StallBuilder
         var rig = Object.FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>();
         rig.Camera.farClipPlane = 80f;                       // the fog ends at 70 m: nothing past it is visible
         rig.gameObject.AddComponent<FoveationLevel>();       // fixed foveated rendering (OpenXR feature on for Android)
+        // Playtest 5: more see-through tracked hands (they hid what they held).
+        var hands = rig.gameObject.AddComponent<SeeThroughHands>();
+        hands.original = AssetDatabase.LoadAssetAtPath<Material>(HandMaterialPath);
+        hands.seeThrough = SeeThroughHandMaterial(hands.original);
         // The editor-only XR Interaction Simulator (EditorSimulatorSwitch turns it on in the Editor without a headset)
         // stays out of player builds, and with it ~14 MB of XRI sample assets it references.
         foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(t => t.name == "XR Interaction Simulator"))
@@ -159,9 +167,10 @@ public static class StallBuilder
         board.fruitSocket = Socket("Fruit socket", boardGo.transform, new Vector3(-0.05f, 0.98f, 0.52f), new Vector3(0.18f, 0.14f, 0.18f), LayerFruit);
         board.fruitSocket.attachTransform = Marker(board.fruitSocket.transform, "Attach", new Vector3(0, 0.92f - 0.98f, 0));
         // The bowl's root is its middle (BowlHalfHeight above its foot), so a socket at that height stands it on the deck.
-        board.scoopSocket = Socket("Scoop spot", boardGo.transform, new Vector3(0.2f, CounterTop + BowlHalfHeight, 0.52f), new Vector3(0.16f, 0.12f, 0.16f), LayerBowl);
-        var scoopMark = Box("Scoop mark", boardGo.transform, new Vector3(0.2f, 0.902f, 0.52f), new Vector3(0.15f, 0.004f, 0.15f), Mat("Mark", new Color(1f, 0.8f, 0.2f)), false);
-        DeckLabel("BOWL HERE", boardGo.transform, new Vector3(0.2f, 0.905f, 0.52f), 0.13f);
+        // x 0.215: the 1.3× bowl (Ø 19.5 cm) clears the board's right edge (x 0.11) and the pistol (x 0.325).
+        board.scoopSocket = Socket("Scoop spot", boardGo.transform, new Vector3(ScoopX, CounterTop + BowlHalfHeight, 0.52f), new Vector3(0.16f, 0.12f, 0.16f) * BS, LayerBowl);
+        var scoopMark = Box("Scoop mark", boardGo.transform, new Vector3(ScoopX, 0.902f, 0.52f), new Vector3(0.15f * BS, 0.004f, 0.15f * BS), Mat("Mark", new Color(1f, 0.8f, 0.2f)), false);
+        DeckLabel("BOWL HERE", boardGo.transform, new Vector3(ScoopX, 0.905f, 0.52f), 0.13f * BS);
         board.guideLine = GuideLine(boardGo.transform);
         SocketFeedback(board.fruitSocket, boardLook.GetComponentInChildren<Renderer>().gameObject);
         SocketFeedback(board.scoopSocket, scoopMark);
@@ -180,9 +189,11 @@ public static class StallBuilder
             Dispenser(crate, fruits[i], crates[i] + new Vector3(0, 0.01f, 0));
         }
 
-        // Bowl stack and the extras (skewer cup, chili tray) on the right.
-        var bowls = Crate("Bowl stack", stall, new Vector3(0.42f, CounterTop, 0.5f), 0.16f, 0.02f);     // a supply tray like the others
-        Dispenser(bowls, bowl, bowls.position + new Vector3(0, BowlHalfHeight + 0.002f, 0));
+        // A bowl always waits on the scoop spot, next to the board: the cut fruit goes in by hand. Like every bin, lifting
+        // it makes no new one; the next appears once it is handed over, or dropped and despawned.
+        Dispenser(board.scoopSocket.transform, bowl, board.scoopSocket.transform.position + new Vector3(0, 0.002f, 0));
+        var bowls = board.scoopSocket.GetComponent<SliceAndSell.Dispenser>();
+        // The extras (skewer cup, chili tray) on the right.
         var cup = Crate("Skewer cup", stall, new Vector3(0.615f, CounterTop, 0.42f), 0.07f, 0.06f);     // behind the cleaver's blade
         Dispenser(cup, skewer, cup.position + new Vector3(0, 0.11f, 0));
         var chiliTray = Crate("Chili tray", stall, new Vector3(0.59f, CounterTop, 0.56f), 0.12f, 0.03f);
@@ -202,14 +213,18 @@ public static class StallBuilder
                                                  Quaternion.AngleAxis(8.7f, Vector3.right) * Quaternion.LookRotation(Vector3.right, Vector3.back));
         cleaver.GetComponent<Knife>().board = board;
         var whoosh = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/ThirdParty/Kenney/InterfaceSounds/maximize_001.ogg");
-        foreach (var tool in new[] { knife, cleaver })
+        // The pistol (for the fruit thief) lying on its side where the bowl stack was, grip toward the player, barrel
+        // to the right. Playtest 5: no magazine to load, it just fires. It comes back to here like the knives.
+        var pistol = (GameObject)PrefabUtility.InstantiatePrefab(pistolPrefab, stall);
+        pistol.transform.SetPositionAndRotation(new Vector3(0.37f, CounterTop + 0.0155f, 0.46f), Quaternion.LookRotation(Vector3.right, Vector3.forward));
+        foreach (var tool in new[] { knife, cleaver, pistol })
         {
             var rack = tool.GetComponent<ReturnToRack>();
             rack.board = boardGo.transform.Find("Board");     // the board's top, not the "Cutting board" root at the stall origin
             rack.whoosh = whoosh;
         }
 
-        // Orders: levels, customers walking along the street, order card (chest height, so it never hides a face), chalkboard.
+        // Orders: levels, customers walking along the street, the order speech bubble, chalkboard.
         var orders = new GameObject("Orders").AddComponent<OrderManager>();
         orders.transform.SetParent(stall);
         orders.levels = levels; orders.menu = menu; orders.customerPrefabs = customers;
@@ -217,12 +232,10 @@ public static class StallBuilder
         orders.counterSpot = Marker(stall, "Counter spot", CounterSpot);
         orders.customerExit = Marker(stall, "Customer exit", CustomerExit);
         orders.queueSpot = Marker(stall, "Queue spot", QueueSpot);
-        // Order card: a paper ticket on a dark-wood backing with an orange header strip, at the customer's chest
-        // (1.24 m): seated, the eyes drop twice as far as the stall, and a higher card covered their chin.
-        var card = Box("Order card", stall, new Vector3(0, 1.24f, 1.12f), new Vector3(0.36f, 0.2f, 0.01f), Mat("Card", new Color(0.99f, 0.95f, 0.86f)), false);
-        Box("Order card backing", card.transform.parent, new Vector3(0, 1.24f, 1.126f), new Vector3(0.38f, 0.22f, 0.006f), Mat("Wood trim", new Color(0.22f, 0.13f, 0.08f)), false);
-        Box("Order card strip", card.transform.parent, new Vector3(0, 1.329f, 1.1145f), new Vector3(0.36f, 0.022f, 0.001f), Mat("Accent", new Color(0.95f, 0.55f, 0.16f)), false);
-        orders.orderCard = Text("Order card text", stall, new Vector3(0, 1.228f, 1.112f), new Vector2(0.32f, 0.15f), new Color(0.17f, 0.1f, 0.05f));
+        // Order bubble (playtest 5: the order is the customer speaking, not a card on the stall): a cream speech
+        // bubble with a tail pointing at the customer, beside their head on the player's right so it never covers the
+        // face. OrderBubble moves it with the customer and hides it when there is nothing to say.
+        orders.orderCard = OrderBubbleLook(stall, orders);
         orders.orderCard.fontStyle = FontStyles.Bold;
         // Chalkboard in a wooden frame with a chalk ledge; warm chalk-white text (OrderManager sizes the lines).
         Box("Chalkboard", stall, new Vector3(-0.55f, 1.45f, 0.97f), new Vector3(0.5f, 0.3f, 0.02f), Mat("Chalk", new Color(0.12f, 0.22f, 0.16f)), false);
@@ -239,14 +252,15 @@ public static class StallBuilder
         orders.autoStart = false;
         var (mainMenu, _) = MenuBuilder.Build(stall, orders);
 
-        // Wrist menu (left palm up, or the Menu button) at the scene root: it follows the wrist, not the stall.
-        var wristMenu = WristMenuBuilder.Build(null, orders);
+        // In-game menu at the scene root (it opens in front of the eyes); its MENU sign sits on the cart.
+        var wristMenu = WristMenuBuilder.Build(null, stall, orders);
         UnityEditor.Events.UnityEventTools.AddPersistentListener(wristMenu.onExitToMenu, mainMenu.Show);
 
         // Hand-off tray (far edge, in front of the customer, its back rim just inside the cart's lip at z 0.82).
         var tray = new GameObject("Hand-off tray"); tray.transform.SetParent(stall);
         var trayMesh = Box("Tray", tray.transform, new Vector3(0.25f, 0.905f, 0.73f), new Vector3(0.2f, 0.01f, 0.16f), Mat("Tray", new Color(0.9f, 0.45f, 0.15f)));
-        var traySocket = Socket("Tray socket", tray.transform, new Vector3(0.25f, CounterTop + 0.006f + BowlHalfHeight, 0.73f), new Vector3(0.2f, 0.14f, 0.16f), LayerBowl);
+        // The trigger is wider than the tray look so the bigger bowl still lands in it (tossing it to the customer also serves).
+        var traySocket = Socket("Tray socket", tray.transform, new Vector3(0.25f, CounterTop + 0.006f + BowlHalfHeight, 0.73f), new Vector3(0.22f, 0.16f, 0.2f), LayerBowl);
         traySocket.gameObject.AddComponent<HandoffTray>().orders = orders;
         // A real tray with a rim (Blender) as the look, so it reads as "put it down here"; the box keeps the collider.
         var trayLook = StreetBuilder.Prop("HandoverTray", tray.transform, new Vector3(0.25f, CounterTop, 0.73f), 0f);
@@ -281,8 +295,33 @@ public static class StallBuilder
         StreetSounds(stall, orders.counterSpot);
         // The pushcart look replaces the counter box's own (the box keeps the collider); umbrella, bulbs, lanterns, scale...
         if (StreetBuilder.DressStall(stall, counter.transform.position)) counter.GetComponent<Renderer>().enabled = false;
-        TrimShadows(stall);
-        PickDecorBatches(stall);
+        // Performance report, build C ("before" optimisation 2): -perfBeforeOpt2 on the command line skips the shadow
+        // trimming and the decor batching. Never set for the real game.
+        if (!Environment.GetCommandLineArgs().Contains("-perfBeforeOpt2"))
+        {
+            TrimShadows(stall);
+            PickDecorBatches(stall);
+        }
+        else Debug.LogWarning("[StallBuilder] -perfBeforeOpt2: TrimShadows and BatchDecor skipped (performance report build C)");
+        PerfHud(stall);
+    }
+
+    // Performance measuring (Lab 6 FrameHud + perf-log.csv): on the stall's upper right, over the bell and clear of the
+    // counter and the customer's face, facing the player, Start route by ray. It exists only in Development builds on
+    // the device (DevelopmentOnly): a release build and the Editor remove it at start. Added after the decor batching,
+    // and a canvas, so it is never combined or shadow-trimmed.
+    const string FrameHudPath = "Assets/HCD545/Lab6/Prefabs/FrameHud.prefab";
+    static void PerfHud(Transform stall)
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(FrameHudPath);
+        if (!prefab) { Debug.LogWarning("[StallBuilder] no FrameHud prefab: performance HUD left out"); return; }
+        var hud = (GameObject)PrefabUtility.InstantiatePrefab(prefab, stall);
+        PrefabUtility.UnpackPrefabInstance(hud, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);   // its own copy: components can go
+        var pos = new Vector3(0.6f, 1.38f, 0.85f);
+        hud.transform.SetPositionAndRotation(stall.TransformPoint(pos), Quaternion.LookRotation(stall.TransformPoint(pos) - new Vector3(0f, 1.6f, 0f)));
+        foreach (var follow in hud.GetComponentsInChildren<UnityEngine.XR.Interaction.Toolkit.UI.LazyFollow>(true)) Object.DestroyImmediate(follow);   // stays on the stall
+        hud.AddComponent<SliceAndSell.Perf.DevelopmentOnly>();
+        hud.AddComponent<SliceAndSell.Perf.PerfStatsLogger>().fps = hud.GetComponentInChildren<HCD545.FpsLogger>(true);
     }
 
     // Quest draw calls (handoff #6): the still decor under the stall is combined into a few batches at start
@@ -471,12 +510,8 @@ public static class StallBuilder
         // which keep the colliders.
         if (StreetBuilder.Prop("Knife", root.transform, Vector3.zero, 0f))
             foreach (var b in new[] { handle, blade }) b.GetComponent<Renderer>().enabled = false;
-        var attach = new GameObject("Attach").transform; attach.SetParent(root.transform, false);
-        var grab = Grab<KnifeGrab>(root, LayerDefault, dynamicAttach: false);
-        grab.attachTransform = attach;
-        // Hands pinch the front of the handle (by the blade), like a chef's pinch grip. Tune on the headset.
-        grab.handAttachTransform = Marker(root.transform, "Hand attach", KnifeHandGripPosition);
-        grab.handAttachTransform.localRotation = Quaternion.Euler(KnifeHandGripEuler);
+        // Playtest 5: the knife keeps the angle it was picked up at (dynamic attach), for hands and controllers alike.
+        var grab = Grab<KnifeGrab>(root, LayerDefault, dynamicAttach: true);
         var knife = root.AddComponent<Knife>();
         knife.edgeStart = Marker(root.transform, "Edge start", new Vector3(0, -0.015f, 0.05f));
         knife.edgeEnd = Marker(root.transform, "Edge end", new Vector3(0, -0.015f, 0.17f));
@@ -502,7 +537,8 @@ public static class StallBuilder
         // The Blender Eto over the two boxes, which keep the colliders.
         if (StreetBuilder.Prop("Cleaver", root.transform, Vector3.zero, 0f))
             foreach (var b in new[] { handle, blade }) b.GetComponent<Renderer>().enabled = false;
-        var grab = Grab(root, LayerDefault, dynamicAttach: true);     // each hand holds the handle where it closes
+        // Playtest 5: keeps the angle it was picked up at (dynamic attach): each hand holds the handle where it closes.
+        var grab = Grab(root, LayerDefault, dynamicAttach: true);
         grab.selectMode = InteractableSelectMode.Multiple;           // a second hand may steady it
         var tool = root.AddComponent<Knife>();
         tool.cleaver = true;
@@ -514,7 +550,59 @@ public static class StallBuilder
         return root;
     }
 
-    const float BowlHalfHeight = 0.0325f;      // the Blender bowl is 6.5 cm tall; the prefab root is its middle
+    // ---------- pistol (the thief) ----------
+
+    static GameObject pistolPrefab;     // saved in Build() with the other prefabs
+    static readonly Color GunMetal = new Color(0.13f, 0.13f, 0.15f), GunGrip = new Color(0.27f, 0.2f, 0.15f);
+
+    // Built along +Z like the knife: barrel forward, slide on top, grip down. The hand holds the grip ("Grip attach",
+    // barrel along the hand's pointing direction). No magazine (playtest 5): it always fires.
+    static GameObject MakePistol(Bullet bullet)
+    {
+        var root = new GameObject("Pistol");
+        var rb = root.AddComponent<Rigidbody>(); rb.mass = 0.8f;
+        var metal = Mat("Gun metal", GunMetal);
+        var slide = Box("Slide", root.transform, new Vector3(0, 0.03f, 0.045f), new Vector3(0.03f, 0.034f, 0.18f), metal);
+        var grip = Box("Grip", root.transform, new Vector3(0, -0.025f, -0.02f), new Vector3(0.028f, 0.09f, 0.04f), Mat("Gun grip", GunGrip));
+        Box("Trigger guard", root.transform, new Vector3(0, -0.008f, 0.032f), new Vector3(0.006f, 0.006f, 0.045f), metal, false);
+        Box("Trigger", root.transform, new Vector3(0, 0.002f, 0.02f), new Vector3(0.005f, 0.016f, 0.006f), metal, false);
+        Box("Front sight", root.transform, new Vector3(0, 0.05f, 0.125f), new Vector3(0.004f, 0.006f, 0.006f), metal, false);
+        Box("Muzzle ring", root.transform, new Vector3(0, 0.03f, 0.136f), new Vector3(0.018f, 0.018f, 0.004f), Mat("Muzzle", new Color(0.05f, 0.05f, 0.05f)), false);
+
+        var grab = Grab(root, LayerDefault, dynamicAttach: false);
+        grab.attachTransform = Marker(root.transform, "Grip attach", new Vector3(0, -0.01f, -0.02f));
+        grab.colliders.Clear();
+        grab.colliders.Add(slide.GetComponent<Collider>()); grab.colliders.Add(grip.GetComponent<Collider>());
+
+        var pistol = root.AddComponent<Pistol>();
+        pistol.muzzle = Marker(root.transform, "Muzzle", new Vector3(0, 0.03f, 0.14f));
+        pistol.bulletPrefab = bullet;
+        pistol.shotSound = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/ThirdParty/Kenney/ImpactSounds/impactPunch_heavy_000.ogg");
+        root.AddComponent<ReturnToRack>();
+        root.AddComponent<HoldOnTrackingLoss>();
+        Feedback(root, "knife");
+        return root;
+    }
+
+    // A small bright round with a short tracer trail.
+    static GameObject MakeBullet()
+    {
+        var root = new GameObject("Bullet");
+        var tracer = Mat("Tracer", new Color(1f, 0.85f, 0.35f));
+        var ball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        Object.DestroyImmediate(ball.GetComponent<Collider>());
+        ball.name = "Round"; ball.transform.SetParent(root.transform, false); ball.transform.localScale = Vector3.one * 0.012f;
+        ball.GetComponent<Renderer>().sharedMaterial = tracer;
+        ball.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        var trail = root.AddComponent<TrailRenderer>();
+        trail.time = 0.07f; trail.startWidth = 0.008f; trail.endWidth = 0f; trail.minVertexDistance = 0.02f;
+        trail.sharedMaterial = tracer; trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        root.AddComponent<Bullet>();
+        return root;
+    }
+
+    const float BowlHalfHeight = Bowl.HalfHeight;   // the Blender bowl shown Bowl.Size (1.3×); the prefab root is its middle
+    const float BS = Bowl.Size, ScoopX = 0.215f;
 
     // The serving bowl (Blender: Ø 15 cm, 6.5 cm tall, foot at y 0 of the model). One solid box is the body (the
     // grab and the sockets); the mouth trigger over it takes a cut fruit let go over it, and extras dropped in.
@@ -522,24 +610,26 @@ public static class StallBuilder
     {
         var root = new GameObject("Bowl");
         var rb = root.AddComponent<Rigidbody>(); rb.mass = 0.2f;
-        var col = root.AddComponent<BoxCollider>(); col.size = new Vector3(0.13f, 2f * BowlHalfHeight, 0.13f);
+        var col = root.AddComponent<BoxCollider>(); col.size = new Vector3(0.13f * BS, 2f * BowlHalfHeight, 0.13f * BS);
         Grab(root, LayerDefault | LayerBowl, dynamicAttach: true);
-        StreetBuilder.Prop("Bowl", root.transform, new Vector3(0f, -BowlHalfHeight, 0f), 0f).name = "Bowl look";
+        var look = StreetBuilder.Prop("Bowl", root.transform, new Vector3(0f, -BowlHalfHeight, 0f), 0f);
+        look.name = "Bowl look";
+        look.localScale = Vector3.one * BS;                          // playtest 5: a bigger bowl (Ø 19.5 cm)
         var b = root.AddComponent<Bowl>();
         // A heap of slices just under the rim, a skewer standing in it, a chilli on top.
         b.filledVisual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         b.filledVisual.name = "Slices";
         Object.DestroyImmediate(b.filledVisual.GetComponent<Collider>());
         b.filledVisual.transform.SetParent(root.transform, false);
-        b.filledVisual.transform.localPosition = new Vector3(0f, 0.012f, 0f);
-        b.filledVisual.transform.localScale = new Vector3(0.12f, 0.036f, 0.12f);
+        b.filledVisual.transform.localPosition = new Vector3(0f, 0.012f, 0f) * BS;
+        b.filledVisual.transform.localScale = new Vector3(0.12f, 0.036f, 0.12f) * BS;
         b.filledVisual.GetComponent<Renderer>().sharedMaterial = Mat("Slices", new Color(0.98f, 0.8f, 0.55f));
-        b.skewerVisual = Box("Skewer", root.transform, new Vector3(0.03f, 0.06f, 0f), new Vector3(0.004f, 0.12f, 0.004f), Mat("Skewer", new Color(0.85f, 0.7f, 0.45f)), false);
-        b.chiliVisual = StreetBuilder.Prop("Chili", root.transform, new Vector3(-0.015f, 0.032f, 0.01f), 30f).gameObject;
+        b.skewerVisual = Box("Skewer", root.transform, new Vector3(0.03f * BS, 0.06f * BS, 0f), new Vector3(0.004f, 0.12f * BS, 0.004f), Mat("Skewer", new Color(0.85f, 0.7f, 0.45f)), false);
+        b.chiliVisual = StreetBuilder.Prop("Chili", root.transform, new Vector3(-0.015f, 0.032f, 0.01f) * BS, 30f).gameObject;
         foreach (var v in new[] { b.filledVisual, b.skewerVisual, b.chiliVisual }) v.SetActive(false);
         // Mouth: a trigger from inside the bowl to a hand's width over its rim.
-        var mouth = new GameObject("Mouth"); mouth.transform.SetParent(root.transform, false); mouth.transform.localPosition = new Vector3(0, 0.05f, 0);
-        var mc = mouth.AddComponent<BoxCollider>(); mc.isTrigger = true; mc.size = new Vector3(0.16f, 0.09f, 0.16f);
+        var mouth = new GameObject("Mouth"); mouth.transform.SetParent(root.transform, false); mouth.transform.localPosition = new Vector3(0, 0.05f * BS, 0);
+        var mc = mouth.AddComponent<BoxCollider>(); mc.isTrigger = true; mc.size = new Vector3(0.16f, 0.09f, 0.16f) * BS;
         mouth.AddComponent<BowlMouth>().bowl = b;
         root.AddComponent<DespawnWhenDropped>();
         root.AddComponent<HoldOnTrackingLoss>();
@@ -586,6 +676,24 @@ public static class StallBuilder
         return prefab;
     }
 
+    const string HandMaterialPath = "Assets/Samples/XR Interaction Toolkit/3.6.1/Hands Interaction Demo/Materials/Unity_Hand_Medium.mat";
+
+    // A copy of the sample's hand material with lower alpha on the fill, the dark core and the rim.
+    static Material SeeThroughHandMaterial(Material original)
+    {
+        if (!original) { Debug.LogWarning("Hand material not found: " + HandMaterialPath); return null; }
+        const string dir = Root + "/Materials/Hands", path = dir + "/HandSeeThrough.mat";
+        if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder(Root + "/Materials", "Hands");
+        var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (!m) { m = new Material(original); AssetDatabase.CreateAsset(m, path); }
+        else m.CopyPropertiesFromMaterial(original);
+        m.name = "HandSeeThrough";
+        foreach (var (prop, alpha) in new[] { ("_Color", 0.35f), ("_MainColor", 0.25f), ("_EdgeColor", 0.5f) })
+            if (m.HasProperty(prop)) { var c = m.GetColor(prop); c.a = alpha; m.SetColor(prop, c); }
+        EditorUtility.SetDirty(m);
+        return m;
+    }
+
     static XRGrabInteractable Grab(GameObject go, int layers, bool dynamicAttach) => Grab<XRGrabInteractable>(go, layers, dynamicAttach);
 
     static T Grab<T>(GameObject go, int layers, bool dynamicAttach) where T : XRGrabInteractable
@@ -594,6 +702,8 @@ public static class StallBuilder
         g.interactionLayers = layers;
         g.movementType = XRBaseInteractable.MovementType.Instantaneous;
         g.useDynamicAttach = dynamicAttach;
+        // Playtest 5: throws with tracked hands came out weak (the release is slower than a controller's). 1.5 is XRI's default.
+        g.throwVelocityScale = 2f;
         // Physics steps at 50 Hz, the headset draws at 72-90: without it a dropped or thrown item judders as it falls.
         go.GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.Interpolate;
         return g;
@@ -641,6 +751,7 @@ public static class StallBuilder
     {
         var d = at.gameObject.AddComponent<SliceAndSell.Dispenser>();
         d.prefab = prefab;
+        d.onlyWhenGone = true;          // playtest 5: no refill until the item is used up (no clutter)
         d.spawnPoint = Marker(at, "Spawn point", at.InverseTransformPoint(spawnPos));
     }
 
@@ -694,6 +805,25 @@ public static class StallBuilder
         if (!collider) Object.DestroyImmediate(b.GetComponent<Collider>());
         b.GetComponent<Renderer>().sharedMaterial = m;
         return b;
+    }
+
+    // 360 x 200 mm bubble; the tail (a turned square in the frame colour) pokes out of the lower left, towards the head.
+    static TMP_Text OrderBubbleLook(Transform stall, OrderManager orders)
+    {
+        var root = new GameObject("Order bubble").AddComponent<OrderBubble>();
+        root.transform.SetParent(stall, false);
+        root.transform.position = new Vector3(CounterSpot.x, root.restHeight, CounterSpot.z);
+        var size = new Vector2(360f, 200f);
+        var panel = UiKit.Panel("Bubble", root.transform, root.transform.position, Quaternion.identity, size, UiKit.Cream);
+        Object.DestroyImmediate(panel.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>());   // only a look: never catches a ray
+        var tail = UiKit.Rounded(panel, "Tail", new Vector2(-size.x * 0.5f + 40f, -size.y * 0.5f - 8f), new Vector2(46f, 46f),
+                                 Color.Lerp(UiKit.Cream, UiKit.Ink, 0.55f), 4f);
+        tail.rectTransform.localRotation = Quaternion.Euler(0, 0, 45f);
+        tail.rectTransform.SetSiblingIndex(1);                                              // behind the frame and board
+        var text = UiKit.Label(panel, "", Vector2.zero, size - new Vector2(40f, 30f), 30f, UiKit.Ink);
+        text.enableAutoSizing = true; text.fontSizeMin = 14f; text.fontSizeMax = 52f;
+        root.orders = orders; root.text = text; root.look = panel.gameObject;
+        return text;
     }
 
     static Transform Marker(Transform parent, string name, Vector3 localPos)

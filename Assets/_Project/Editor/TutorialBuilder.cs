@@ -13,8 +13,8 @@ public static class TutorialBuilder
 
     // Low over the middle of the counter, tilted to the eyes, inside poke reach for the OK button. Parented to the stall,
     // so it drops with it when seated, while the eyes drop twice as far (1.6 -> 1.2 m): it must clear the customer's face
-    // and the order card in both stances. Standing it sits ~42 degrees down (order card 14-22), seated ~21 (order card
-    // 4-12, face above the eye line), and it stays above the sight line to the board.
+    // and the order bubble beside it in both stances. Standing it sits ~42 degrees down, seated ~21 (face and bubble
+    // above the eye line), and it stays above the sight line to the board.
     static readonly Vector3 CardPos = new Vector3(0f, 1.20f, 0.42f);
     static readonly Quaternion CardRot = Quaternion.Euler(35f, 0f, 0f);
     static readonly Vector2 CardSize = new Vector2(280f, 120f);     // mm

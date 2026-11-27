@@ -53,6 +53,11 @@ namespace SliceAndSell
         public float TimeLeft { get; private set; }
         public float Patience01 { get; private set; } = 1f;
         public bool Running => Level ? running : true;   // a shift is in progress (or ended, waiting for the bell)
+        public bool ShiftEnded => shiftEnded;
+        public int ShiftId { get; private set; }          // +1 on every start / stop: a thief from an old shift leaves
+
+        // Thief (ThiefSpawner): a takedown (pistol or knife) earns the reward; he costs the penalty if he gets away with the fruit.
+        public const int ThiefReward = 30, ThiefPenalty = 10;
 
         readonly Scoring scoring = new Scoring();
         System.Random rng;
@@ -64,11 +69,23 @@ namespace SliceAndSell
         LevelDefinition boardLevel;
         int boardMoney = int.MinValue, boardTarget, boardCombo, boardSecond, boardServed, boardCount;
 
-        void OnEnable() => Fruit.AnyCut += OnCut;
-        void OnDisable() => Fruit.AnyCut -= OnCut;
+        // While paused the order card says so (the order comes back on resume), customers stand still (Customer),
+        // knives don't cut (Knife) and the hand-off tray doesn't serve, so a pause really stops the game.
+        public const string PausedCard = "Paused\n<size=60%>Resume in the menu</size>";
+        string cardText = "";
+
+        void OnEnable() { Fruit.AnyCut += OnCut; GamePause.Changed += OnPauseChanged; }
+        void OnDisable() { Fruit.AnyCut -= OnCut; GamePause.Changed -= OnPauseChanged; }
+
+        void OnPauseChanged(bool paused)
+        {
+            if (orderCard) orderCard.text = paused ? PausedCard : cardText;
+        }
 
         void Start()
         {
+            if (customerPrefabs != null && customerPrefabs.Length > 0 && !GetComponent<ThiefSpawner>())
+                gameObject.AddComponent<ThiefSpawner>().orders = this;
             if (Level) { if (autoStart) StartLevel(levelIndex); }
             else { if (customer) customer.SetActive(false); NextCustomer(); }
         }
@@ -82,6 +99,8 @@ namespace SliceAndSell
             levelIndex = i;
             running = true;
             GamePause.Set(false);
+            ClearFilledBowls();
+            ShiftId++;
             var level = Level;
             scoring.Reset();
             Served = 0; index = -1; waiting = arriving = shiftEnded = false; ShiftWon = false; Stars = 0;
@@ -113,7 +132,32 @@ namespace SliceAndSell
             waiting = arriving = shiftEnded = false;
             running = false;
             GamePause.Set(false);
+            ClearFilledBowls();
+            ShiftId++;
             Show("");
+        }
+
+        public void ThiefCaught(Vector3 at)
+        {
+            scoring.AddMoney(ThiefReward);
+            GameEvents.RaisePaid(at, ThiefReward, 0, true);      // coins
+            UpdateBoard();
+        }
+
+        public void ThiefEscaped(Vector3 at)
+        {
+            if (!running || shiftEnded) return;                 // after the shift nothing is lost
+            scoring.AddMoney(-ThiefPenalty);
+            GameEvents.RaiseRefused(at);                         // the "aw" sound
+            UpdateBoard();
+        }
+
+        // A bowl filled in the last shift (or filled wrong) doesn't carry over: it goes, and the bowl spot makes a
+        // fresh empty one. Empty bowls stay where they are.
+        static void ClearFilledBowls()
+        {
+            foreach (var b in FindObjectsByType<Bowl>(FindObjectsSortMode.None))
+                if (b.IsFilled) Destroy(b.gameObject);
         }
 
         // Bell, or automatically after a delivery. After the shift, the bell starts the next level (or a retry).
@@ -121,6 +165,7 @@ namespace SliceAndSell
         {
             CancelInvoke(nameof(NextCustomer));
             if (Level && !running) return;
+            if (GamePause.Paused) { Invoke(nameof(NextCustomer), 0.25f); return; }     // the next one comes after the pause
             if (shiftEnded) { NextLevel(); return; }
             if (waiting || arriving) return;
             if (Level && Level.customers == 0) orders.Add(MakeOrder());     // continuous shift
@@ -132,11 +177,12 @@ namespace SliceAndSell
                 arriving = true;
                 // The one waiting in line steps up; otherwise someone walks in from the street.
                 if (queued) { present = queued; queued = null; }
-                else present = Instantiate(customerPrefabs[index % customerPrefabs.Length], customerEntry.position, Quaternion.identity, transform);
+                else { present = Instantiate(customerPrefabs[index % customerPrefabs.Length], customerEntry.position, Quaternion.identity, transform); present.Orders = this; }
                 present.Arrive(present.transform.position, counterSpot.position, OnArrived);
                 if (Level && Level.queue && queueSpot && (Level.customers == 0 || index + 1 < orders.Count))
                 {
                     queued = Instantiate(customerPrefabs[(index + 1) % customerPrefabs.Length], customerEntry.position, Quaternion.identity, transform);
+                    queued.Orders = this;
                     queued.Arrive(customerEntry.position, queueSpot.position, null);
                 }
                 Show("");
@@ -179,9 +225,14 @@ namespace SliceAndSell
             UpdateBoard();
         }
 
+        // A bowl thrown at a customer (Customer hitboxes): served only if that customer is the one waiting at the counter.
+        public DeliveryResult DeliverTo(Customer customer, Bowl bowl) => customer && customer == present ? Deliver(bowl) : DeliveryResult.NoCustomer;
+
+        public Customer Present => present;     // the customer at (or walking to) the counter; null when none (OrderBubble)
+
         public DeliveryResult Deliver(Bowl bowl)
         {
-            if (!waiting) return DeliveryResult.NoCustomer;
+            if (!waiting || GamePause.Paused) return DeliveryResult.NoCustomer;
             if (!bowl.IsFilled)
             {
                 Show("It's empty!");
@@ -260,7 +311,8 @@ namespace SliceAndSell
 
         void Show(string card)
         {
-            if (orderCard) orderCard.text = card;
+            cardText = card;
+            if (orderCard) orderCard.text = GamePause.Paused ? PausedCard : card;
             UpdateBoard();
         }
 
