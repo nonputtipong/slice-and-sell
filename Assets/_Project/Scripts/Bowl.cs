@@ -133,9 +133,10 @@ namespace SliceAndSell
         const int Steps = 80;                           // 1.6 s of falling and settling, simulated at once
 
         // A physics scene of its own (never stepped by Unity, nothing rendered): the bowl's inside and the table round it.
-        static void EnsureSettleScene()
+        // A fresh one for every fill (unloaded after it): a reused scene kept PhysX state from earlier fills, so the same
+        // fruit settled differently depending on what came before (a watermelon test passed or failed by test order).
+        static void NewSettleScene()
         {
-            if (settleScene.IsValid() && settleScene.isLoaded) return;
             settleScene = SceneManager.CreateScene("Bowl settle " + System.Guid.NewGuid().ToString("N").Substring(0, 6),
                                                    new CreateSceneParameters(LocalPhysicsMode.Physics3D));
             settlePhysics = settleScene.GetPhysicsScene();
@@ -176,7 +177,7 @@ namespace SliceAndSell
         void Settle()
         {
             var clock = System.Diagnostics.Stopwatch.StartNew();
-            EnsureSettleScene();
+            NewSettleScene();
             var slices = Slices.Cast<Transform>().ToArray();
             var bodies = new Transform[slices.Length];
             for (int i = 0; i < slices.Length; i++)
@@ -213,6 +214,7 @@ namespace SliceAndSell
                 bodies[i].gameObject.SetActive(false);
                 Destroy(bodies[i].gameObject);
             }
+            SceneManager.UnloadSceneAsync(settleScene);
             LastSettleMs = (float)clock.Elapsed.TotalMilliseconds;
             Debug.Log($"[Bowl] {Contents}: {slices.Length} slices settled in {LastSettleMs:0.00} ms ({Steps} steps)");   // read on the Quest with adb logcat
         }

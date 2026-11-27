@@ -96,12 +96,14 @@ namespace SliceAndSell.Tests
 
         // Playtest: the bowl showed an orange blob ("soup"). It now holds the fruit's own slices, laid in the bowl at their
         // real size (playtest 4: shrinking them to fit looked wrong); one wider than the bowl rests on the rim.
-        // Every fruit, fully cut, at real size, settles INTO the 1.3x bowl: no corner below the inner floor or more than
-        // 2 mm into the sloped wall (the original limits), and the heap reaches down into the bowl instead of floating
-        // at the rim (playtest 4). Small fruit lies low; a watermelon quarter (wider than the bowl) may rest on the rim.
+        // Every fruit, fully cut, at real size, settles INTO the 1.3x bowl: no corner more than 2 mm into the sloped wall
+        // (the original limit) or more than 1 mm under the inner floor (the original check was the floor itself; 1 mm,
+        // which can't be seen, leaves room for the physics solver, as a mango corner rests only 0.1-0.6 mm above it),
+        // and the heap reaches down into the bowl instead of floating at the rim (playtest 4). Small fruit lies low;
+        // pineapple and watermelon pieces (as wide as the bowl or wider) rest higher, a watermelon quarter on the rim.
         [UnityTest]
         public IEnumerator EveryFruitSettlesIntoTheBowl(
-            [Values("Guava:2:3:0.4", "Mango:3:4:0.5", "Pineapple:4:4:1.0", "Watermelon:3:4:1.0")] string spec)
+            [Values("Guava:2:3:0.4", "Mango:3:4:0.5", "Pineapple:4:4:0.75", "Watermelon:3:4:0.95")] string spec)
         {
             var parts = spec.Split(':');
             int cuts = int.Parse(parts[1]), slices = int.Parse(parts[2]);
@@ -132,6 +134,25 @@ namespace SliceAndSell.Tests
                 Assert.Less(new Vector2(centre.x, centre.z).magnitude, Bowl.RimRadius, $"{p.name} lies over the bowl, not beside it");
             }
             Assert.Less(lowest, lowLimit, $"{parts[0]}: slices lie down in the bowl (lowest corner {lowest:F3} m above the foot)");
+        }
+
+        // Review: a slice that slides off onto the table is put back on the heap, judged by its centre (not its pivot),
+        // over the middle of the bowl and lying flat on its thinnest side (not on its edge).
+        [UnityTest]
+        public IEnumerator SliceThatSlidOffIsPutBackFlatOnTheHeap()
+        {
+            var bowl = BowlWith(orders.transform, 2, fruitName: "Mango");
+            var off = bowl.Slices.GetChild(bowl.Slices.childCount - 1);
+            off.localPosition = new Vector3(0.3f, Bowl.FootY + 0.05f, 0f);   // starts beside the bowl, so it lands on the table
+            yield return null;
+            Assert.IsTrue(bowl.Settled, "settled");
+            var r = off.GetComponent<MeshRenderer>();
+            var centre = bowl.transform.InverseTransformPoint(r.bounds.center);
+            Assert.Less(new Vector2(centre.x, centre.z).magnitude, Bowl.InnerRadius(Bowl.FloorHeight), "moved back over the middle");
+            Assert.Greater(centre.y - Bowl.FootY, Bowl.FloorHeight, "on the heap, above the floor");
+            var size = Vector3.Scale(off.GetComponent<MeshFilter>().sharedMesh.bounds.size, off.localScale);
+            var thin = size.x <= size.y && size.x <= size.z ? Vector3.right : size.z <= size.y ? Vector3.forward : Vector3.up;
+            Assert.Greater(Mathf.Abs(Vector3.Dot(off.localRotation * thin, Vector3.up)), 0.99f, "lies flat on its thinnest side");
         }
 
         // Playtest: Pause did nothing you could see. Paused, the card says so, and nothing can be served.
